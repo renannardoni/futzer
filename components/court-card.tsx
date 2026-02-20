@@ -11,13 +11,22 @@ interface CourtCardProps {
   onMouseLeave?: () => void;
 }
 
-const courtTypeLabels: Record<Court["tipoPiso"], string> = {
+const courtTypeLabels: Record<string, string> = {
   society: "Society",
   grama: "Grama",
   salao: "Salão",
+  quadra: "Quadra",
+  campo: "Campo",
+  areia: "Areia",
 };
 
-const courtTypeColors: Record<Court["tipoPiso"], string> = {
+const courtTypeColors: Record<string, string> = {
+  society: "bg-blue-500",
+  grama: "bg-green-500",
+  salao: "bg-purple-500",
+  quadra: "bg-orange-500",
+  campo: "bg-emerald-500",
+  areia: "bg-yellow-500",
   society: "bg-blue-100 text-blue-800 border-blue-200",
   grama: "bg-green-100 text-green-800 border-green-200",
   salao: "bg-purple-100 text-purple-800 border-purple-200",
