@@ -95,7 +95,7 @@ export default function AdminPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400">Preço Médio/hora</p>
             <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">
-              {loading || quadras.length === 0 ? '—' : `R$ ${(quadras.reduce((a, q) => a + q.precoPorHora, 0) / quadras.length).toFixed(0)}`}
+              {loading || quadras.length === 0 ? '—' : `R$ ${(quadras.reduce((a, q) => a + (q.precoPorHora ?? 0), 0) / quadras.length).toFixed(0)}`}
             </p>
           </div>
         </div>
