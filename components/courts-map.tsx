@@ -82,7 +82,7 @@ export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClic
             <Marker
               key={court.id}
               position={[court.coordenadas.lat, court.coordenadas.lng]}
-              icon={createPriceIcon(court.precoPorHora, isActive)}
+              icon={createPriceIcon(court.precoPorHora ?? 0, isActive)}
               eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onCourtClick?.(court); } }}
             />
           );
