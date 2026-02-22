@@ -30,7 +30,8 @@ export default function QuadrasPage() {
       const data = await getQuadras(filters);
       setQuadras(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar quadras');
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar quadras';
+      setError(msg || 'Erro ao conectar com a API. Verifique sua conexão.');
     } finally {
       setLoading(false);
     }
