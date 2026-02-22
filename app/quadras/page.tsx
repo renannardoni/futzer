@@ -11,6 +11,8 @@ export default function QuadrasPage() {
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState('todos');
   const [filters, setFilters] = useState({
     tipo: '',
     cidade: '',
@@ -34,12 +36,9 @@ export default function QuadrasPage() {
     }
   };
 
-  const handleFilterChange = (newFilters: any) => {
-    setFilters(newFilters);
-  };
-
-  const handleSearch = () => {
-    loadQuadras();
+  const handleTypeChange = (value: string) => {
+    setSelectedType(value);
+    setFilters(prev => ({ ...prev, tipo: value === 'todos' ? '' : value }));
   };
 
   return (
@@ -55,8 +54,10 @@ export default function QuadrasPage() {
         </div>
 
         <CourtsFilters 
-          onFilterChange={handleFilterChange}
-          onSearch={handleSearch}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedType={selectedType}
+          onTypeChange={handleTypeChange}
         />
 
         {loading && (
@@ -89,9 +90,11 @@ export default function QuadrasPage() {
 
         {!loading && !error && quadras.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quadras.map((quadra) => (
-              <CourtCard key={quadra.id} court={quadra} />
-            ))}
+            {quadras
+              .filter(q => q.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+              .map((quadra) => (
+                <CourtCard key={quadra.id} court={quadra} />
+              ))}
           </div>
         )}
       </main>
