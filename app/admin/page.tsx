@@ -172,7 +172,7 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 font-semibold text-gray-800 dark:text-white">
-                          R$ {quadra.precoPorHora.toFixed(0)}
+                          R$ {(quadra.precoPorHora ?? 0).toFixed(0)}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-1">
