@@ -21,15 +21,12 @@ const courtTypeLabels: Record<string, string> = {
 };
 
 const courtTypeColors: Record<string, string> = {
-  society: "bg-blue-500",
-  grama: "bg-green-500",
-  salao: "bg-purple-500",
-  quadra: "bg-orange-500",
-  campo: "bg-emerald-500",
-  areia: "bg-yellow-500",
   society: "bg-blue-100 text-blue-800 border-blue-200",
   grama: "bg-green-100 text-green-800 border-green-200",
   salao: "bg-purple-100 text-purple-800 border-purple-200",
+  quadra: "bg-orange-100 text-orange-800 border-orange-200",
+  campo: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  areia: "bg-yellow-100 text-yellow-800 border-yellow-200",
 };
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
