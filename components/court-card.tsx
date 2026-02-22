@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Court } from "@/types/court";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, Phone } from "lucide-react";
 
 interface CourtCardProps {
   court: Court;
@@ -32,6 +32,14 @@ const courtTypeColors: Record<string, string> = {
   salao: "bg-purple-100 text-purple-800 border-purple-200",
 };
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
+
+function getImageSrc(url?: string) {
+  if (!url) return FALLBACK_IMAGE;
+  if (url.includes("example.com") || url.includes("placeholder.com")) return FALLBACK_IMAGE;
+  return url;
+}
+
 export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps) {
   return (
     <Link href={`/quadras/${court.id}`}>
@@ -42,10 +50,11 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
       >
         <div className="relative h-48 w-full">
           <Image
-            src={court.imagemCapa}
+            src={getImageSrc(court.imagemCapa)}
             alt={court.nome}
             fill
             className="object-cover"
+            unoptimized={getImageSrc(court.imagemCapa).includes('localhost')}
           />
           <Badge className="absolute top-3 right-3 bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-white dark:hover:bg-gray-800">
             {courtTypeLabels[court.tipoPiso]}
@@ -63,9 +72,19 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
             <MapPin className="h-4 w-4" />
             <span className="line-clamp-1">{court.endereco.rua}</span>
           </div>
-          <div className="text-lg font-semibold dark:text-white">
-            R$ {court.precoPorHora.toFixed(0)}
-            <span className="text-sm font-normal text-muted-foreground dark:text-gray-400">/hora</span>
+          <div className="flex items-end justify-between gap-2">
+            <div className="text-lg font-semibold dark:text-white">
+              {court.precoPorHora != null
+                ? <>{"R$ "}{court.precoPorHora.toFixed(0)}<span className="text-sm font-normal text-muted-foreground dark:text-gray-400">/hora</span></>
+                : <span className="text-sm font-normal text-muted-foreground dark:text-gray-400">Consulte o preço</span>
+              }
+            </div>
+            {court.telefone && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-gray-400">
+                <Phone className="h-3.5 w-3.5" />
+                <span>{court.telefone}</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

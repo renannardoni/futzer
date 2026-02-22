@@ -14,7 +14,6 @@ export default function QuadrasPage() {
   const [filters, setFilters] = useState({
     tipo: '',
     cidade: '',
-    esporte: '',
     preco_max: undefined as number | undefined,
   });
 

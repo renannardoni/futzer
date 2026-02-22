@@ -3,39 +3,21 @@ export type CourtType = "society" | "grama" | "salao" | "quadra" | "campo" | "ar
 export interface Court {
   id: string;
   nome: string;
-  tipo: string;
-  esporte: string;
   descricao: string;
-  preco_hora: number;
-  localizacao: {
-    endereco: string;
-    cidade: string;
-    estado: string;
-    cep: string;
-    latitude: number;
-    longitude: number;
-  };
-  disponibilidade: {
-    dias_semana: string[];
-    horario_abertura: string;
-    horario_fechamento: string;
-  };
-  comodidades: string[];
-  imagens: string[];
-  
-  // Campos compatíveis com versão antiga
-  endereco?: {
+  endereco: {
     rua: string;
     cidade: string;
     estado: string;
     cep: string;
   };
-  coordenadas?: {
+  coordenadas: {
     lat: number;
     lng: number;
   };
-  precoPorHora?: number;
-  tipoPiso?: CourtType;
-  imagemCapa?: string;
-  avaliacao?: number;
+  precoPorHora?: number | null;
+  tipoPiso: string;
+  imagemCapa: string;
+  avaliacao: number;
+  telefone?: string | null;
+  owner_id?: string;
 }

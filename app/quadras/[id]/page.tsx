@@ -1,18 +1,57 @@
-import { notFound } from "next/navigation";
+'use client';
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { mockCourts } from "@/lib/mock-data";
+import { getQuadraById, type Quadra } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Users, Star } from "lucide-react";
-import { Court } from "@/types/court";
+import { MapPin, Clock, Users, Star, Phone } from "lucide-react";
 
-export default async function QuadraPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const quadra = mockCourts.find((c: Court) => c.id === id);
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
 
-  if (!quadra) {
-    notFound();
+function isValidImageUrl(url: string) {
+  return url && url.startsWith("http") && !url.includes("example.com") && !url.includes("placeholder.com");
+}
+
+export default function QuadraPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const [quadra, setQuadra] = useState<Quadra | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFoundState, setNotFoundState] = useState(false);
+
+  useEffect(() => {
+    getQuadraById(id)
+      .then(setQuadra)
+      .catch(() => setNotFoundState(true))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando quadra...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (notFoundState || !quadra) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold dark:text-white mb-4">Quadra não encontrada</h1>
+          <Link href="/" className="text-[#6AB945] hover:underline">Voltar para a busca</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const imageSrc = isValidImageUrl(quadra.imagemCapa) ? quadra.imagemCapa : FALLBACK_IMAGE;
+  const isLocalImage = imageSrc.includes('localhost');
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -36,10 +75,11 @@ export default async function QuadraPage({ params }: { params: Promise<{ id: str
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 relative h-96 rounded-lg overflow-hidden">
                 <Image
-                  src={quadra.imagemCapa}
+                  src={imageSrc}
                   alt={quadra.nome}
                   fill
                   className="object-cover"
+                  unoptimized={isLocalImage}
                 />
               </div>
               {/* Adicionar mais fotos quando tiver backend */}
@@ -103,12 +143,17 @@ export default async function QuadraPage({ params }: { params: Promise<{ id: str
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700 sticky top-24">
               <div className="mb-6">
                 <div className="flex items-baseline mb-4">
-                  <span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span>
-                  <span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span>
+                  {quadra.precoPorHora != null
+                    ? <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
+                    : <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
+                  }
                 </div>
+                {quadra.telefone && (
+                  <a href={`tel:${quadra.telefone}`} className="flex items-center gap-2 text-sm text-[#6AB945] hover:underline">
+                    <Phone className="w-4 h-4" />{quadra.telefone}
+                  </a>
+                )}
               </div>
-
-              {/* Formulário de reserva (a ser implementado) */}
               <div className="space-y-4 mb-6">
                 <div>
                   <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
@@ -146,12 +191,12 @@ export default async function QuadraPage({ params }: { params: Promise<{ id: str
               {/* Resumo da reserva (calcular depois) */}
               <div className="mt-6 pt-6 border-t dark:border-gray-700">
                 <div className="flex justify-between mb-2">
-                  <span className="text-gray-600 dark:text-gray-400">R$ {quadra.precoPorHora.toFixed(2)} x 1 hora</span>
-                  <span className="dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span>
+                  <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
+                  <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-lg mt-4">
                   <span className="dark:text-white">Total</span>
-                  <span className="dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span>
+                  <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
                 </div>
               </div>
             </div>
