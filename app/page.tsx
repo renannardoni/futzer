@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Image from "next/image";
 import { Header } from "@/components/header";
 import { CourtCard } from "@/components/court-card";
 import { getQuadras, type Quadra } from "@/lib/api";
@@ -103,11 +104,14 @@ export default function Home() {
           {/* Bottom preview card when marker is tapped */}
           {selectedCourt && (
             <div className="absolute bottom-4 left-3 right-3 z-[1000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex">
-              <div className="w-28 shrink-0">
-                <img
+              <div className="relative w-28 shrink-0">
+                <Image
                   src={getImg(selectedCourt.imagemCapa)}
                   alt={selectedCourt.nome}
+                  fill
+                  sizes="112px"
                   className="w-full h-full object-cover"
+                  unoptimized={getImg(selectedCourt.imagemCapa).includes('localhost')}
                 />
               </div>
               <div className="flex-1 p-3 min-w-0">
@@ -173,11 +177,14 @@ export default function Home() {
           {/* Bottom preview card when marker is clicked */}
           {selectedCourt && (
             <div className="absolute bottom-5 left-4 right-4 z-[1000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex">
-              <div className="w-32 shrink-0">
-                <img
+              <div className="relative w-32 shrink-0">
+                <Image
                   src={getImg(selectedCourt.imagemCapa)}
                   alt={selectedCourt.nome}
+                  fill
+                  sizes="128px"
                   className="w-full h-full object-cover"
+                  unoptimized={getImg(selectedCourt.imagemCapa).includes('localhost')}
                 />
               </div>
               <div className="flex-1 p-4 min-w-0">

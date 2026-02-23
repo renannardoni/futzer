@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getQuadras, type Quadra } from '@/lib/api';
 import { Header } from '@/components/header';
@@ -19,11 +19,7 @@ export default function QuadrasPage() {
     preco_max: undefined as number | undefined,
   });
 
-  useEffect(() => {
-    loadQuadras();
-  }, []);
-
-  const loadQuadras = async () => {
+  const loadQuadras = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -35,7 +31,11 @@ export default function QuadrasPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadQuadras();
+  }, [loadQuadras]);
 
   const handleTypeChange = (value: string) => {
     setSelectedType(value);

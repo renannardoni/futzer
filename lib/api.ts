@@ -1,5 +1,39 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+const API_BASE_URL = API_URL.replace(/\/api\/?$/, '');
+
+function normalizeImageUrl(url?: string | null): string {
+  if (!url) return '';
+
+  const raw = url.trim();
+
+  // Fix malformed URLs like: https://api.domainhttps://res.cloudinary.com/...
+  const secondProtocolIndex = raw.indexOf('https://', 8);
+  const secondHttpProtocolIndex = raw.indexOf('http://', 7);
+  const duplicateProtocolIndex =
+    secondProtocolIndex !== -1
+      ? secondProtocolIndex
+      : secondHttpProtocolIndex;
+
+  if (duplicateProtocolIndex !== -1) {
+    return raw.slice(duplicateProtocolIndex);
+  }
+
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/uploads/')) {
+    return `${API_BASE_URL}${raw}`;
+  }
+
+  if (raw.startsWith('uploads/')) {
+    return `${API_BASE_URL}/${raw}`;
+  }
+
+  return raw;
+}
+
 // Types
 export interface Endereco {
   rua: string;
@@ -140,7 +174,11 @@ export async function getQuadras(filters?: {
     throw new Error('Erro ao carregar quadras');
   }
 
-  return response.json();
+  const data: Quadra[] = await response.json();
+  return data.map((quadra) => ({
+    ...quadra,
+    imagemCapa: normalizeImageUrl(quadra.imagemCapa),
+  }));
 }
 
 export async function getQuadraById(id: string): Promise<Quadra> {
@@ -150,7 +188,11 @@ export async function getQuadraById(id: string): Promise<Quadra> {
     throw new Error('Quadra não encontrada');
   }
 
-  return response.json();
+  const quadra: Quadra = await response.json();
+  return {
+    ...quadra,
+    imagemCapa: normalizeImageUrl(quadra.imagemCapa),
+  };
 }
 
 export async function uploadImage(file: File): Promise<string> {
@@ -168,9 +210,7 @@ export async function uploadImage(file: File): Promise<string> {
   }
 
   const data = await response.json();
-  // Return absolute URL so the image is served from the API
-  const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace('/api', '');
-  return `${base}${data.url}`;
+  return normalizeImageUrl(data.url);
 }
 
 export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'created_at' | 'updated_at'>): Promise<Quadra> {

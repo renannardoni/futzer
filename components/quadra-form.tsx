@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createQuadra, updateQuadra, uploadImage, type Quadra } from '@/lib/api';
 import { ArrowLeft, Save, Loader2, Upload, X, Link as LinkIcon, ImageIcon } from 'lucide-react';
 
@@ -305,10 +306,13 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
                 <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700">
                   {previewUrl ? (
                     <>
-                      <img
+                      <Image
                         src={previewUrl}
                         alt="Preview"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 50vw"
                         className="w-full h-full object-cover"
+                        unoptimized={previewUrl.includes('localhost')}
                       />
                       <button
                         type="button"

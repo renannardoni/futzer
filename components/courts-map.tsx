@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import { Court } from "@/types/court";
 import "leaflet/dist/leaflet.css";
@@ -47,19 +47,7 @@ interface CourtsMapProps {
 }
 
 export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClick }: CourtsMapProps) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => { setIsMounted(true); }, []);
-
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
-
-  if (!isMounted) {
-    return (
-      <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando mapa...</p>
-      </div>
-    );
-  }
 
   const center: [number, number] = courts.length > 0
     ? [
