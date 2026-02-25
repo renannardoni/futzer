@@ -82,8 +82,16 @@ export default function Home() {
     </>
   );
 
+  const isTenis = selectedType === "tenis";
+
   return (
-    <div className="min-h-screen bg-background dark:bg-gray-900">
+    <div
+      className="min-h-screen dark:bg-gray-900"
+      style={{
+        backgroundColor: isTenis ? "#F5E6D5" : "#ffffff",
+        transition: "background-color 0.5s ease",
+      }}
+    >
       <Header
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -151,19 +159,19 @@ export default function Home() {
         </div>
 
         {/* Drag handle hint */}
-        <div className="flex justify-center py-2 bg-white dark:bg-gray-900">
+        <div className="flex justify-center py-2 dark:bg-gray-900" style={{ backgroundColor: isTenis ? "#F5E6D5" : "#ffffff", transition: "background-color 0.5s ease" }}>
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
 
         {/* List */}
-        <div className="px-4 pb-8 pt-2 dark:bg-gray-900">
+        <div className="px-4 pb-8 pt-2 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>
       </div>
 
       {/* ── DESKTOP layout ─────────────────────────────────── */}
       <main className="hidden lg:grid lg:grid-cols-2 h-[calc(100vh-96px)]">
-        <div className="overflow-y-auto px-6 py-6 dark:bg-gray-900">
+        <div className="overflow-y-auto px-6 py-6 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>
         <div className="relative h-full sticky top-0">
