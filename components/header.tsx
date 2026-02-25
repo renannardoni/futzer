@@ -30,7 +30,8 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
         </Link>
 
         {/* Search + filtro */}
-        <div className="flex-1 flex gap-2 lg:gap-3 min-w-0">
+        <div className="flex-1 flex justify-center min-w-0">
+        <div className="flex gap-2 lg:gap-3 w-full max-w-xl min-w-0">
           <div className="flex-1 relative min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -82,6 +83,7 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
               </div>
             );
           })()}
+        </div>
         </div>
 
         {/* Ações */}
