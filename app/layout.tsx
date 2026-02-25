@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Futzer — Alugue quadras perto de você",
+  title: "Futzer",
   description: "Alugue quadras de futebol e tênis perto de você. Rápido, fácil e seguro.",
   icons: {
     icon: "/logo.svg",
