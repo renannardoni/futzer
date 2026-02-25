@@ -100,11 +100,28 @@ function ShowAllButton({ total, onClick }: { total: number; onClick: (e: React.M
   return (
     <button
       onClick={onClick}
-      className="absolute bottom-4 right-4 flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-600"
+      className="absolute bottom-4 right-4 flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-600 z-10"
     >
       <Grid2X2 className="w-4 h-4" />
       Mostrar todas as fotos ({total})
     </button>
+  );
+}
+
+function GalleryCell({ src, index, extra, onOpen, sizes }: {
+  src: string; index: number; extra?: number;
+  onOpen: (i: number) => void; sizes: string;
+}) {
+  return (
+    <div className="relative w-full h-full cursor-pointer group overflow-hidden" onClick={() => onOpen(index)}>
+      <Image src={src} alt={`Foto ${index + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized={src.includes('localhost')} sizes={sizes} />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+      {extra != null && extra > 0 && (
+        <div className="absolute inset-0 bg-black/55 flex items-center justify-center pointer-events-none">
+          <span className="text-white font-bold text-2xl">+{extra}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -115,55 +132,72 @@ interface GalleryProps {
 
 function Gallery({ images, onOpenLightbox }: GalleryProps) {
   const count = images.length;
+  const shown = images.slice(0, 5);
+  const H = "h-[420px]";
 
+  // 1 photo — full width
   if (count === 1) {
     return (
-      <div className="relative w-full h-96 rounded-xl overflow-hidden cursor-pointer group" onClick={() => onOpenLightbox(0)}>
-        <Image src={images[0]} alt="Foto principal" fill className="object-cover transition-transform group-hover:scale-105" unoptimized={images[0].includes('localhost')} sizes="100vw" />
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+      <div className={`relative w-full ${H} rounded-xl overflow-hidden`}>
+        <GalleryCell src={shown[0]} index={0} onOpen={onOpenLightbox} sizes="100vw" />
         <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
       </div>
     );
   }
 
+  // 2 photos — two equal columns
   if (count === 2) {
     return (
-      <div className="grid grid-cols-2 gap-2 h-96 rounded-xl overflow-hidden">
-        {images.slice(0, 2).map((img, i) => (
-          <div key={i} className="relative cursor-pointer group" onClick={() => onOpenLightbox(i)}>
-            <Image src={img} alt={`Foto ${i + 1}`} fill className="object-cover transition-transform group-hover:scale-105" unoptimized={img.includes('localhost')} sizes="50vw" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-            {i === 1 && <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(i); }} />}
-          </div>
-        ))}
+      <div className={`relative flex gap-2 ${H} rounded-xl overflow-hidden`}>
+        <div className="flex-1 relative"><GalleryCell src={shown[0]} index={0} onOpen={onOpenLightbox} sizes="50vw" /></div>
+        <div className="flex-1 relative"><GalleryCell src={shown[1]} index={1} onOpen={onOpenLightbox} sizes="50vw" /></div>
+        <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
       </div>
     );
   }
 
-  // 3+ images: Airbnb layout
-  return (
-    <div className="relative grid grid-cols-4 grid-rows-2 gap-2 h-96 rounded-xl overflow-hidden">
-      {/* Large main image */}
-      <div className="col-span-2 row-span-2 relative cursor-pointer group" onClick={() => onOpenLightbox(0)}>
-        <Image src={images[0]} alt="Foto principal" fill className="object-cover transition-transform group-hover:scale-105" unoptimized={images[0].includes('localhost')} sizes="50vw" />
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+  // 3 photos — 1 large left (60%) + 2 stacked right (40%)
+  if (count === 3) {
+    return (
+      <div className={`relative flex gap-2 ${H} rounded-xl overflow-hidden`}>
+        <div className="relative" style={{ flex: '3' }}><GalleryCell src={shown[0]} index={0} onOpen={onOpenLightbox} sizes="60vw" /></div>
+        <div className="flex flex-col gap-2" style={{ flex: '2' }}>
+          <div className="flex-1 relative"><GalleryCell src={shown[1]} index={1} onOpen={onOpenLightbox} sizes="40vw" /></div>
+          <div className="flex-1 relative"><GalleryCell src={shown[2]} index={2} onOpen={onOpenLightbox} sizes="40vw" /></div>
+        </div>
+        <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
       </div>
-      {/* Right grid: up to 4 smaller images */}
-      {images.slice(1, 5).map((img, i) => {
-        const absoluteIndex = i + 1;
-        const isLast = i === 3 && count > 5;
-        return (
-          <div key={i} className="relative cursor-pointer group" onClick={() => onOpenLightbox(absoluteIndex)}>
-            <Image src={img} alt={`Foto ${absoluteIndex + 1}`} fill className="object-cover transition-transform group-hover:scale-105" unoptimized={img.includes('localhost')} sizes="25vw" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-            {isLast && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
-                <span className="text-white font-semibold text-lg">+{count - 5}</span>
-              </div>
-            )}
+    );
+  }
+
+  // 4 photos — 1 large left (50%) + right: top full + bottom split 2
+  if (count === 4) {
+    return (
+      <div className={`relative flex gap-2 ${H} rounded-xl overflow-hidden`}>
+        <div className="flex-1 relative"><GalleryCell src={shown[0]} index={0} onOpen={onOpenLightbox} sizes="50vw" /></div>
+        <div className="flex-1 flex flex-col gap-2">
+          <div className="flex-1 relative"><GalleryCell src={shown[1]} index={1} onOpen={onOpenLightbox} sizes="50vw" /></div>
+          <div className="flex-1 flex gap-2">
+            <div className="flex-1 relative"><GalleryCell src={shown[2]} index={2} onOpen={onOpenLightbox} sizes="25vw" /></div>
+            <div className="flex-1 relative"><GalleryCell src={shown[3]} index={3} onOpen={onOpenLightbox} sizes="25vw" /></div>
           </div>
-        );
-      })}
+        </div>
+        <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
+      </div>
+    );
+  }
+
+  // 5+ photos — 1 large left (50%) + right 2x2 grid
+  return (
+    <div className={`relative flex gap-2 ${H} rounded-xl overflow-hidden`}>
+      <div className="flex-1 relative"><GalleryCell src={shown[0]} index={0} onOpen={onOpenLightbox} sizes="50vw" /></div>
+      <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-2">
+        {shown.slice(1).map((img, i) => (
+          <div key={i} className="relative">
+            <GalleryCell src={img} index={i + 1} extra={i === 3 ? count - 5 : undefined} onOpen={onOpenLightbox} sizes="25vw" />
+          </div>
+        ))}
+      </div>
       <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
     </div>
   );
