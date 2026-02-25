@@ -29,13 +29,9 @@ interface QuadraFormProps {
   mode: 'criar' | 'editar';
 }
 
-const tiposPiso = [
-  { value: 'society', label: 'Society' },
-  { value: 'grama', label: 'Grama Natural' },
-  { value: 'salao', label: 'Salão / Futsal' },
-  { value: 'quadra', label: 'Quadra' },
-  { value: 'campo', label: 'Campo' },
-  { value: 'areia', label: 'Areia' },
+const esportes = [
+  { value: 'futebol', label: '⚽ Futebol' },
+  { value: 'tenis', label: '🎾 Tênis' },
 ];
 
 export function QuadraForm({ quadra, mode }: QuadraFormProps) {
@@ -54,7 +50,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
   const [form, setForm] = useState<FormData>({
     nome: quadra?.nome ?? '',
     descricao: quadra?.descricao ?? '',
-    tipoPiso: quadra?.tipoPiso ?? 'society',
+    tipoPiso: quadra?.tipoPiso ?? 'futebol',
     precoPorHora: quadra?.precoPorHora?.toString() ?? '',
     avaliacao: quadra?.avaliacao?.toString() ?? '0',
     imagemCapa: quadra?.imagemCapa ?? '',
@@ -250,9 +246,9 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className={labelCls}>Tipo de Piso *</label>
+                  <label className={labelCls}>Esporte *</label>
                   <select required value={form.tipoPiso} onChange={set('tipoPiso')} className={inputCls}>
-                    {tiposPiso.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    {esportes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>

@@ -12,12 +12,15 @@ interface CourtCardProps {
 }
 
 const courtTypeLabels: Record<string, string> = {
-  society: "Society",
-  grama: "Grama",
-  salao: "Salão",
-  quadra: "Quadra",
-  campo: "Campo",
-  areia: "Areia",
+  futebol: "⚽ Futebol",
+  tenis: "🎾 Tênis",
+  // legacy values
+  society: "⚽ Futebol",
+  grama: "⚽ Futebol",
+  salao: "⚽ Futebol",
+  quadra: "⚽ Futebol",
+  campo: "⚽ Futebol",
+  areia: "⚽ Futebol",
 };
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";

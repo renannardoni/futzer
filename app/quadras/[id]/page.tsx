@@ -304,8 +304,12 @@ export default function QuadraPage() {
                   <div className="flex items-start">
                     <Users className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
                     <div>
-                      <p className="font-medium dark:text-white">Tipo de piso</p>
-                      <p className="text-gray-600 dark:text-gray-400 capitalize">{quadra.tipoPiso}</p>
+                      <p className="font-medium dark:text-white">Esporte</p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {quadra.tipoPiso === 'futebol' ? '⚽ Futebol'
+                          : quadra.tipoPiso === 'tenis' ? '🎾 Tênis'
+                          : quadra.tipoPiso}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start">

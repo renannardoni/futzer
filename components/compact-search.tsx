@@ -35,10 +35,9 @@ export function CompactSearch({
             onChange={(e) => onTypeChange(e.target.value)}
             className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
           >
-            <option value="todos">Todos os tipos</option>
-            <option value="society">Society</option>
-            <option value="grama">Grama Natural</option>
-            <option value="salao">Salão</option>
+            <option value="todos">Todos os esportes</option>
+            <option value="futebol">⚽ Futebol</option>
+            <option value="tenis">🎾 Tênis</option>
           </select>
         </div>
       </div>

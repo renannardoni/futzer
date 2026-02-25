@@ -167,8 +167,14 @@ export default function AdminPage() {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-medium px-2.5 py-1 rounded-full capitalize">
-                            {quadra.tipoPiso}
+                          <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${
+                            quadra.tipoPiso === 'tenis'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
+                              : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                          }`}>
+                            {quadra.tipoPiso === 'futebol' ? '⚽ Futebol'
+                              : quadra.tipoPiso === 'tenis' ? '🎾 Tênis'
+                              : quadra.tipoPiso}
                           </span>
                         </td>
                         <td className="px-4 py-4 font-semibold text-gray-800 dark:text-white">

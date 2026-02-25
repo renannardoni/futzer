@@ -40,10 +40,9 @@ export function CourtsFilters({
           value={selectedType}
           onChange={(e) => onTypeChange(e.target.value)}
         >
-          <option value="todos">Todos os tipos</option>
-          <option value="society">Society</option>
-          <option value="grama">Grama</option>
-          <option value="salao">Salão</option>
+          <option value="todos">Todos os esportes</option>
+          <option value="futebol">⚽ Futebol</option>
+          <option value="tenis">🎾 Tênis</option>
         </Select>
       </div>
     </div>
