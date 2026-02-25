@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getQuadraById, type Quadra } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X } from "lucide-react";
+
+const QuadraMap = dynamic(
+  () => import('@/components/quadra-map').then(m => m.QuadraMap),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6AB945]" /></div> }
+);
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
 
@@ -314,9 +320,13 @@ export default function QuadraPage() {
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
                 <h2 className="text-xl font-semibold mb-4 dark:text-white">Localização</h2>
-                <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500 dark:text-gray-400">Mapa em desenvolvimento</p>
+                <div className="h-64 rounded-lg overflow-hidden">
+                  <QuadraMap lat={quadra.coordenadas.lat} lng={quadra.coordenadas.lng} nome={quadra.nome} />
                 </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 flex items-center gap-1">
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  {quadra.endereco.rua}, {quadra.endereco.cidade} — {quadra.endereco.estado}{quadra.endereco.cep ? `, ${quadra.endereco.cep}` : ''}
+                </p>
               </div>
             </div>
 
