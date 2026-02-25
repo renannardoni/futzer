@@ -14,7 +14,7 @@ interface HeaderProps {
 export function Header({ searchTerm = "", onSearchChange, selectedType = "todos", onTypeChange }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white dark:bg-gray-900 dark:border-gray-700 shadow-sm">
-      <div className="container mx-auto flex h-16 lg:h-24 items-center justify-between gap-3 lg:gap-6 px-3 lg:px-6 py-2 lg:py-4">
+      <div className="w-full flex h-16 lg:h-24 items-center justify-between gap-3 lg:gap-6 px-3 lg:px-6 py-2 lg:py-4">
         {/* Logo — só ícone no mobile/tablet, ícone + texto no desktop */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <Image
@@ -24,7 +24,7 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
             height={80}
             priority
             unoptimized
-            className="w-9 h-9 lg:w-[80px] lg:h-[80px] lg:-my-4"
+            className="w-9 h-9 lg:w-[80px] lg:h-[80px]"
           />
           <span className="hidden lg:block text-4xl font-bold" style={{ color: '#6AB945' }}>futzer</span>
         </Link>
