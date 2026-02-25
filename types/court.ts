@@ -17,6 +17,7 @@ export interface Court {
   precoPorHora?: number | null;
   tipoPiso: string;
   imagemCapa: string;
+  imagens?: string[];
   avaliacao: number;
   telefone?: string | null;
   owner_id?: string;

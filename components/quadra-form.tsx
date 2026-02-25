@@ -14,6 +14,7 @@ type FormData = {
   precoPorHora: string;
   avaliacao: string;
   imagemCapa: string;
+  imagens: string[];
   telefone: string;
   rua: string;
   cidade: string;
@@ -44,8 +45,11 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [galleryUploadError, setGalleryUploadError] = useState<string | null>(null);
   const [urlMode, setUrlMode] = useState(!!(quadra?.imagemCapa && (quadra.imagemCapa.includes('unsplash') || quadra.imagemCapa.startsWith('https'))) && !quadra.imagemCapa.includes('localhost'));
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormData>({
     nome: quadra?.nome ?? '',
@@ -54,6 +58,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
     precoPorHora: quadra?.precoPorHora?.toString() ?? '',
     avaliacao: quadra?.avaliacao?.toString() ?? '0',
     imagemCapa: quadra?.imagemCapa ?? '',
+    imagens: quadra?.imagens ?? [],
     telefone: quadra?.telefone ?? '',
     rua: quadra?.endereco?.rua ?? '',
     cidade: quadra?.endereco?.cidade ?? '',
@@ -101,6 +106,26 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleGalleryFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setGalleryUploadError(null);
+    setGalleryUploading(true);
+    try {
+      const urls = await Promise.all(files.map(f => uploadImage(f)));
+      setForm(prev => ({ ...prev, imagens: [...prev.imagens, ...urls] }));
+    } catch (err) {
+      setGalleryUploadError(err instanceof Error ? err.message : 'Erro no upload');
+    } finally {
+      setGalleryUploading(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setForm(prev => ({ ...prev, imagens: prev.imagens.filter((_, i) => i !== index) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -120,6 +145,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
       precoPorHora: precoNum,
       avaliacao: avaliacaoNum,
       imagemCapa: form.imagemCapa || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop',
+      imagens: form.imagens,
       telefone: form.telefone.trim() || null,
       endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
       coordenadas: { lat: isNaN(latNum) ? 0 : latNum, lng: isNaN(lngNum) ? 0 : lngNum },
@@ -332,6 +358,73 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Galeria de Fotos */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">Galeria de Fotos</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Adicione mais fotos para exibir na página da quadra (opcional)</p>
+              </div>
+              <div>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={handleGalleryFileChange}
+                  className="hidden"
+                  id="gallery-upload"
+                />
+                <label
+                  htmlFor="gallery-upload"
+                  className="flex items-center gap-2 bg-[#6AB945] hover:bg-[#5aa835] text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer transition-colors"
+                >
+                  {galleryUploading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
+                  ) : (
+                    <><Upload className="w-4 h-4" /> Adicionar fotos</>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {galleryUploadError && (
+              <p className="text-xs text-red-500 mb-3">{galleryUploadError}</p>
+            )}
+
+            {form.imagens.length === 0 ? (
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl h-24 flex items-center justify-center">
+                <p className="text-sm text-gray-400 dark:text-gray-500">Nenhuma foto na galeria</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {form.imagens.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
+                    <Image
+                      src={url}
+                      alt={`Foto ${i + 1}`}
+                      fill
+                      sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
+                      className="object-cover"
+                      unoptimized={url.includes('localhost')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGalleryImage(i)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all"
+                      title="Remover foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs rounded px-1">
+                      {i + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Endereço */}

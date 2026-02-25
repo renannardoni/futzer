@@ -1,25 +1,182 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getQuadraById, type Quadra } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Users, Star, Phone } from "lucide-react";
+import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
 
-function isValidImageUrl(url: string) {
+function isValidImageUrl(url?: string | null) {
   return url && url.startsWith("http") && !url.includes("example.com") && !url.includes("placeholder.com");
 }
 
+function buildAllImages(quadra: Quadra): string[] {
+  const all: string[] = [];
+  const capa = isValidImageUrl(quadra.imagemCapa) ? quadra.imagemCapa : FALLBACK_IMAGE;
+  all.push(capa);
+  (quadra.imagens ?? []).forEach(img => {
+    if (isValidImageUrl(img) && img !== capa) all.push(img);
+  });
+  return all;
+}
+
+// ─── Lightbox ───────────────────────────────────────────────────────────────
+interface LightboxProps {
+  images: string[];
+  initialIndex: number;
+  onClose: () => void;
+}
+
+function Lightbox({ images, initialIndex, onClose }: LightboxProps) {
+  const [current, setCurrent] = useState(initialIndex);
+
+  const prev = useCallback(() => setCurrent(i => (i - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() => setCurrent(i => (i + 1) % images.length), [images.length]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') prev();
+      else if (e.key === 'ArrowRight') next();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [prev, next, onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 py-4" onClick={e => e.stopPropagation()}>
+        <span className="text-white font-medium text-sm">{current + 1} / {images.length}</span>
+        <button onClick={onClose} className="text-white hover:bg-white/20 rounded-full p-2 transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Main image */}
+      <div className="flex-1 flex items-center justify-center relative px-16" onClick={e => e.stopPropagation()}>
+        <button onClick={prev} className="absolute left-4 bg-white/10 hover:bg-white/30 text-white rounded-full p-3 transition-colors z-10">
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <div className="relative w-full max-w-4xl" style={{ height: 'calc(100vh - 220px)' }}>
+          <Image
+            src={images[current]}
+            alt={`Foto ${current + 1}`}
+            fill
+            className="object-contain"
+            unoptimized={images[current].includes('localhost')}
+            sizes="100vw"
+          />
+        </div>
+        <button onClick={next} className="absolute right-4 bg-white/10 hover:bg-white/30 text-white rounded-full p-3 transition-colors z-10">
+          <ChevronRight className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Thumbnail strip */}
+      <div className="flex gap-2 justify-center px-6 py-4 overflow-x-auto" onClick={e => e.stopPropagation()}>
+        {images.map((img, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+              i === current ? 'border-white' : 'border-transparent opacity-50 hover:opacity-80'
+            }`}
+          >
+            <Image src={img} alt={`Miniatura ${i + 1}`} fill className="object-cover" unoptimized={img.includes('localhost')} sizes="64px" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Gallery ─────────────────────────────────────────────────────────────────
+function ShowAllButton({ total, onClick }: { total: number; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="absolute bottom-4 right-4 flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-600"
+    >
+      <Grid2X2 className="w-4 h-4" />
+      Mostrar todas as fotos ({total})
+    </button>
+  );
+}
+
+interface GalleryProps {
+  images: string[];
+  onOpenLightbox: (index: number) => void;
+}
+
+function Gallery({ images, onOpenLightbox }: GalleryProps) {
+  const count = images.length;
+
+  if (count === 1) {
+    return (
+      <div className="relative w-full h-96 rounded-xl overflow-hidden cursor-pointer group" onClick={() => onOpenLightbox(0)}>
+        <Image src={images[0]} alt="Foto principal" fill className="object-cover transition-transform group-hover:scale-105" unoptimized={images[0].includes('localhost')} sizes="100vw" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+        <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
+      </div>
+    );
+  }
+
+  if (count === 2) {
+    return (
+      <div className="grid grid-cols-2 gap-2 h-96 rounded-xl overflow-hidden">
+        {images.slice(0, 2).map((img, i) => (
+          <div key={i} className="relative cursor-pointer group" onClick={() => onOpenLightbox(i)}>
+            <Image src={img} alt={`Foto ${i + 1}`} fill className="object-cover transition-transform group-hover:scale-105" unoptimized={img.includes('localhost')} sizes="50vw" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+            {i === 1 && <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(i); }} />}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 3+ images: Airbnb layout
+  return (
+    <div className="relative grid grid-cols-4 grid-rows-2 gap-2 h-96 rounded-xl overflow-hidden">
+      {/* Large main image */}
+      <div className="col-span-2 row-span-2 relative cursor-pointer group" onClick={() => onOpenLightbox(0)}>
+        <Image src={images[0]} alt="Foto principal" fill className="object-cover transition-transform group-hover:scale-105" unoptimized={images[0].includes('localhost')} sizes="50vw" />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+      </div>
+      {/* Right grid: up to 4 smaller images */}
+      {images.slice(1, 5).map((img, i) => {
+        const absoluteIndex = i + 1;
+        const isLast = i === 3 && count > 5;
+        return (
+          <div key={i} className="relative cursor-pointer group" onClick={() => onOpenLightbox(absoluteIndex)}>
+            <Image src={img} alt={`Foto ${absoluteIndex + 1}`} fill className="object-cover transition-transform group-hover:scale-105" unoptimized={img.includes('localhost')} sizes="25vw" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+            {isLast && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none">
+                <span className="text-white font-semibold text-lg">+{count - 5}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <ShowAllButton total={count} onClick={e => { e.stopPropagation(); onOpenLightbox(0); }} />
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuadraPage() {
   const params = useParams();
   const id = params.id as string;
   const [quadra, setQuadra] = useState<Quadra | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFoundState, setNotFoundState] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     getQuadraById(id)
@@ -50,159 +207,136 @@ export default function QuadraPage() {
     );
   }
 
-  const imageSrc = isValidImageUrl(quadra.imagemCapa) ? quadra.imagemCapa : FALLBACK_IMAGE;
-  const isLocalImage = imageSrc.includes('localhost');
+  const allImages = buildAllImages(quadra);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header com botão voltar */}
-      <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="inline-flex items-center text-[#6AB945] hover:text-[#5aa835]">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Voltar para busca
-          </Link>
-        </div>
-      </header>
+    <>
+      {lightboxIndex !== null && (
+        <Lightbox images={allImages} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna principal - Fotos e informações */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Galeria de fotos */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 relative h-96 rounded-lg overflow-hidden">
-                <Image
-                  src={imageSrc}
-                  alt={quadra.nome}
-                  fill
-                  className="object-cover"
-                  unoptimized={isLocalImage}
-                />
-              </div>
-              {/* Adicionar mais fotos quando tiver backend */}
-            </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <Link href="/" className="inline-flex items-center text-[#6AB945] hover:text-[#5aa835]">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Voltar para busca
+            </Link>
+          </div>
+        </header>
 
-            {/* Título e localização */}
-            <div>
-              <div className="flex items-start justify-between mb-2">
-                <h1 className="text-3xl font-bold dark:text-white">{quadra.nome}</h1>
-                <div className="flex items-center">
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span className="ml-1 font-semibold dark:text-white">{quadra.avaliacao}</span>
-                </div>
-              </div>
-              <div className="flex items-center text-gray-600 dark:text-gray-400">
-                <MapPin className="w-5 h-5 mr-2" />
-                <span>{quadra.endereco.rua}, {quadra.endereco.cidade}</span>
-              </div>
-            </div>
-
-            {/* Descrição */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-              <h2 className="text-xl font-semibold mb-4 dark:text-white">Sobre esta quadra</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                {quadra.descricao}
-              </p>
-            </div>
-
-            {/* Informações adicionais */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-              <h2 className="text-xl font-semibold mb-4 dark:text-white">Informações</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start">
-                  <Users className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
-                  <div>
-                    <p className="font-medium dark:text-white">Tipo de piso</p>
-                    <p className="text-gray-600 dark:text-gray-400 capitalize">{quadra.tipoPiso}</p>
-                  </div>
-                </div>
-                <div className="flex items-start">
-                  <Clock className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
-                  <div>
-                    <p className="font-medium dark:text-white">Localização</p>
-                    <p className="text-gray-600 dark:text-gray-400">{quadra.endereco.cidade}, {quadra.endereco.estado}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mapa (adicionar depois) */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-              <h2 className="text-xl font-semibold mb-4 dark:text-white">Localização</h2>
-              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500 dark:text-gray-400">Mapa em desenvolvimento</p>
-              </div>
+        <div className="container mx-auto px-4 py-8">
+          {/* Title row */}
+          <div className="mb-4">
+            <h1 className="text-3xl font-bold dark:text-white">{quadra.nome}</h1>
+            <div className="flex items-center gap-3 mt-1 text-gray-600 dark:text-gray-400 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-semibold text-gray-800 dark:text-white">{quadra.avaliacao}</span>
+              </span>
+              <span>·</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                {quadra.endereco.rua}, {quadra.endereco.cidade} — {quadra.endereco.estado}
+              </span>
             </div>
           </div>
 
-          {/* Sidebar - Card de reserva */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700 sticky top-24">
-              <div className="mb-6">
-                <div className="flex items-baseline mb-4">
-                  {quadra.precoPorHora != null
-                    ? <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
-                    : <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
-                  }
-                </div>
-                {quadra.telefone && (
-                  <a href={`tel:${quadra.telefone}`} className="flex items-center gap-2 text-sm text-[#6AB945] hover:underline">
-                    <Phone className="w-4 h-4" />{quadra.telefone}
-                  </a>
-                )}
+          {/* Gallery */}
+          <div className="mb-8">
+            <Gallery images={allImages} onOpenLightbox={setLightboxIndex} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main content */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
+                <h2 className="text-xl font-semibold mb-4 dark:text-white">Sobre esta quadra</h2>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{quadra.descricao}</p>
               </div>
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
-                  <input
-                    type="date"
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 dark:text-gray-200">Início</label>
-                    <input
-                      type="time"
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
-                    />
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
+                <h2 className="text-xl font-semibold mb-4 dark:text-white">Informações</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start">
+                    <Users className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
+                    <div>
+                      <p className="font-medium dark:text-white">Tipo de piso</p>
+                      <p className="text-gray-600 dark:text-gray-400 capitalize">{quadra.tipoPiso}</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 dark:text-gray-200">Fim</label>
-                    <input
-                      type="time"
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
-                    />
+                  <div className="flex items-start">
+                    <Clock className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
+                    <div>
+                      <p className="font-medium dark:text-white">Localização</p>
+                      <p className="text-gray-600 dark:text-gray-400">{quadra.endereco.cidade}, {quadra.endereco.estado}</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <Button className="w-full bg-[#6AB945] hover:bg-[#5aa835] text-white py-6 text-lg font-semibold">
-                Reservar agora
-              </Button>
-
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-                Você ainda não será cobrado
-              </p>
-
-              {/* Resumo da reserva (calcular depois) */}
-              <div className="mt-6 pt-6 border-t dark:border-gray-700">
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
-                  <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
+                <h2 className="text-xl font-semibold mb-4 dark:text-white">Localização</h2>
+                <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                  <p className="text-gray-500 dark:text-gray-400">Mapa em desenvolvimento</p>
                 </div>
-                <div className="flex justify-between font-semibold text-lg mt-4">
-                  <span className="dark:text-white">Total</span>
-                  <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+              </div>
+            </div>
+
+            {/* Sidebar - reserva */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700 sticky top-24">
+                <div className="mb-6">
+                  <div className="flex items-baseline mb-4">
+                    {quadra.precoPorHora != null
+                      ? <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
+                      : <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
+                    }
+                  </div>
+                  {quadra.telefone && (
+                    <a href={`tel:${quadra.telefone}`} className="flex items-center gap-2 text-sm text-[#6AB945] hover:underline">
+                      <Phone className="w-4 h-4" />{quadra.telefone}
+                    </a>
+                  )}
+                </div>
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
+                    <input type="date" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 dark:text-gray-200">Início</label>
+                      <input type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 dark:text-gray-200">Fim</label>
+                      <input type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
+                    </div>
+                  </div>
+                </div>
+                <Button className="w-full bg-[#6AB945] hover:bg-[#5aa835] text-white py-6 text-lg font-semibold">
+                  Reservar agora
+                </Button>
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">Você ainda não será cobrado</p>
+                <div className="mt-6 pt-6 border-t dark:border-gray-700">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
+                    <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-lg mt-4">
+                    <span className="dark:text-white">Total</span>
+                    <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

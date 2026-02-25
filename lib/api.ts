@@ -56,6 +56,7 @@ export interface Quadra {
   precoPorHora?: number | null;
   tipoPiso: string;
   imagemCapa: string;
+  imagens?: string[];
   avaliacao: number;
   telefone?: string | null;
   owner_id?: string;
@@ -178,6 +179,7 @@ export async function getQuadras(filters?: {
   return data.map((quadra) => ({
     ...quadra,
     imagemCapa: normalizeImageUrl(quadra.imagemCapa),
+    imagens: (quadra.imagens ?? []).map(normalizeImageUrl).filter(Boolean),
   }));
 }
 
@@ -192,6 +194,7 @@ export async function getQuadraById(id: string): Promise<Quadra> {
   return {
     ...quadra,
     imagemCapa: normalizeImageUrl(quadra.imagemCapa),
+    imagens: (quadra.imagens ?? []).map(normalizeImageUrl).filter(Boolean),
   };
 }
 
