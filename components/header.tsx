@@ -48,10 +48,9 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
             className="hidden lg:block pl-4 pr-12 py-2 h-11 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors appearance-none bg-no-repeat bg-[length:1.5rem] bg-[right_0.5rem_center]"
             style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")" }}
           >
-            <option value="todos">Todos os tipos</option>
-            <option value="society">Society</option>
-            <option value="grama">Grama Natural</option>
-            <option value="salao">Salão</option>
+            <option value="todos">Todos os esportes</option>
+            <option value="futebol">⚽ Futebol</option>
+            <option value="tenis">🎾 Tênis</option>
           </select>
           {/* Filtro compacto abaixo de lg */}
           <select
@@ -60,9 +59,8 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
             className="lg:hidden h-10 px-2 w-24 shrink-0 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer appearance-none"
           >
             <option value="todos">Todos</option>
-            <option value="society">Society</option>
-            <option value="grama">Grama</option>
-            <option value="salao">Salão</option>
+            <option value="futebol">⚽ Futebol</option>
+            <option value="tenis">🎾 Tênis</option>
           </select>
         </div>
 
