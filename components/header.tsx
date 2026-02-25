@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -86,10 +85,7 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
         </div>
         </div>
 
-        {/* Ações */}
-        <div className="flex items-center gap-1 lg:gap-3 shrink-0">
-          <ThemeToggle />
-        </div>
+
       </div>
     </header>
   );
