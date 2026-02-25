@@ -48,25 +48,37 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
               { value: "futebol", short: "⚽",     long: "⚽ Futebol"  },
               { value: "tenis",   short: "🎾",     long: "🎾 Tênis"   },
             ];
+            // cor do container muda conforme esporte ativo
+            const borderColor = selectedType === "tenis" ? "#C26B3A" : "#6AB945";
             return (
-              <div className="flex shrink-0 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                {opts.map((opt, i) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => onTypeChange?.(opt.value)}
-                    className={[
-                      "relative h-10 lg:h-11 px-3 lg:px-4 text-sm font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500",
-                      i > 0 ? "border-l border-gray-200 dark:border-gray-700" : "",
-                      selectedType === opt.value
-                        ? "bg-[#6AB945] text-white shadow-inner"
-                        : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200",
-                    ].join(" ")}
-                  >
-                    <span className="lg:hidden">{opt.short}</span>
-                    <span className="hidden lg:inline whitespace-nowrap">{opt.long}</span>
-                  </button>
-                ))}
+              <div
+                className="flex shrink-0 rounded-xl overflow-hidden shadow-sm border transition-colors duration-300"
+                style={{ borderColor }}
+              >
+                {opts.map((opt, i) => {
+                  const isActive = selectedType === opt.value;
+                  const activeStyle = opt.value === "tenis"
+                    ? { backgroundColor: "#C26B3A", color: "#fff" }   // saibro
+                    : { backgroundColor: "#6AB945", color: "#fff" };  // grama
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => onTypeChange?.(opt.value)}
+                      style={isActive ? activeStyle : undefined}
+                      className={[
+                        "relative h-10 lg:h-11 px-3 lg:px-4 text-sm font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                        i > 0 ? "border-l border-gray-200 dark:border-gray-700" : "",
+                        isActive
+                          ? "shadow-inner"
+                          : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200",
+                      ].join(" ")}
+                    >
+                      <span className="lg:hidden">{opt.short}</span>
+                      <span className="hidden lg:inline whitespace-nowrap">{opt.long}</span>
+                    </button>
+                  );
+                })}
               </div>
             );
           })()}
