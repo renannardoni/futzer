@@ -33,13 +33,23 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
         <div className="flex gap-2 lg:gap-3 w-full max-w-2xl min-w-0">
           <div className="flex-1 relative min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {/* Mobile: placeholder curto */}
+            <Input
+              type="text"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="lg:hidden pl-9 h-10 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            />
+            {/* Desktop: placeholder completo */}
             <Input
               type="text"
               placeholder="Buscar quadras..."
               value={searchTerm}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="pl-9 h-10 lg:h-11 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              className="hidden lg:block pl-9 h-11 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
+          </div>
           </div>
           {/* Filtro de esporte — pill buttons */}
           {(() => {
