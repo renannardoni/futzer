@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createQuadra, updateQuadra, uploadImage, type Quadra } from '@/lib/api';
-import { ArrowLeft, Save, Loader2, Upload, X, Link as LinkIcon, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Upload, X, Link as LinkIcon, ImageIcon, MapPin } from 'lucide-react';
 
 type FormData = {
   nome: string;
@@ -124,6 +124,37 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
 
   const removeGalleryImage = (index: number) => {
     setForm(prev => ({ ...prev, imagens: prev.imagens.filter((_, i) => i !== index) }));
+  };
+
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const handleGeocode = async () => {
+    const parts = [form.rua, form.cidade, form.estado, 'Brasil'].filter(Boolean);
+    if (parts.length < 2) {
+      setGeocodeMsg({ type: 'err', text: 'Preencha pelo menos rua e cidade antes de buscar.' });
+      return;
+    }
+    setGeocoding(true);
+    setGeocodeMsg(null);
+    try {
+      const q = encodeURIComponent(parts.join(', '));
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+        headers: { 'Accept-Language': 'pt-BR' },
+      });
+      const data = await res.json();
+      if (data.length === 0) {
+        setGeocodeMsg({ type: 'err', text: 'Endereço não encontrado. Tente ser mais específico.' });
+        return;
+      }
+      const { lat, lon, display_name } = data[0];
+      setForm(prev => ({ ...prev, lat: parseFloat(lat).toFixed(6), lng: parseFloat(lon).toFixed(6) }));
+      setGeocodeMsg({ type: 'ok', text: `Encontrado: ${display_name.split(',').slice(0, 3).join(',')}` });
+    } catch {
+      setGeocodeMsg({ type: 'err', text: 'Erro ao buscar coordenadas. Tente novamente.' });
+    } finally {
+      setGeocoding(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -454,15 +485,37 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
 
           {/* Coordenadas */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-1">Coordenadas (para o mapa)</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Você pode obter no{' '}
-              <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="text-[#6AB945] hover:underline">
-                Google Maps
-              </a>{' '}
-              clicando com botão direito no local
-            </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-start justify-between mb-1">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800 dark:text-white">Coordenadas (para o mapa)</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Preencha o endereço acima e clique em{' '}
+                  <span className="font-medium text-[#6AB945]">Buscar automaticamente</span>, ou insira manualmente via{' '}
+                  <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="text-[#6AB945] hover:underline">Google Maps</a>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGeocode}
+                disabled={geocoding}
+                className="flex-shrink-0 flex items-center gap-2 bg-[#6AB945] hover:bg-[#5aa835] disabled:opacity-60 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors ml-4"
+              >
+                {geocoding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                {geocoding ? 'Buscando...' : 'Buscar automaticamente'}
+              </button>
+            </div>
+
+            {geocodeMsg && (
+              <p className={`text-xs mt-2 mb-3 px-3 py-2 rounded-lg ${
+                geocodeMsg.type === 'ok'
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+              }`}>
+                {geocodeMsg.text}
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 mt-3">
               <div>
                 <label className={labelCls}>Latitude</label>
                 <input type="number" step="any" value={form.lat} onChange={set('lat')} placeholder="-23.5505" className={inputCls} />
