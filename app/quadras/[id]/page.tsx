@@ -358,24 +358,71 @@ export default function QuadraPage() {
                   )}
                 </div>
 
-                {/* ALUGUEL — booking form (locked, em breve) */}
+                {/* ALUGUEL — booking form (locked) */}
                 {quadra.modalidade === 'aluguel' && (
                   <>
-                    <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
+                    <div className="space-y-5 mb-6 opacity-50 pointer-events-none select-none">
+
+                      {/* 10-day calendar strip */}
                       <div>
                         <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
-                        <input disabled type="date" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Início</label>
-                          <input disabled type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                          {Array.from({ length: 10 }, (_, i) => {
+                            const d = new Date();
+                            d.setDate(d.getDate() + i);
+                            const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+                            const isSelected = i === 0;
+                            return (
+                              <div
+                                key={i}
+                                className={`flex-shrink-0 flex flex-col items-center px-2 py-2 rounded-lg border text-xs w-[2.6rem] ${
+                                  isSelected
+                                    ? 'bg-[#6AB945] text-white border-[#6AB945]'
+                                    : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800'
+                                }`}
+                              >
+                                <span className="font-medium">{DAY_NAMES[d.getDay()]}</span>
+                                <span className="text-sm font-bold mt-0.5">{d.getDate()}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Fim</label>
-                          <input disabled type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                      </div>
+
+                      {/* Court selector */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Quadra</label>
+                        <div className="flex gap-2 flex-wrap">
+                          {['Quadra 1', 'Quadra 2'].map((q, i) => (
+                            <button
+                              key={q}
+                              className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${
+                                i === 0
+                                  ? 'bg-[#6AB945] text-white border-[#6AB945]'
+                                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800'
+                              }`}
+                            >
+                              {q}
+                            </button>
+                          ))}
                         </div>
                       </div>
+
+                      {/* Time slots */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Horários disponíveis — Quadra 1</label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {['07:00','08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'].map((t) => (
+                            <button
+                              key={t}
+                              className="py-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                     </div>
 
                     <button
@@ -386,8 +433,8 @@ export default function QuadraPage() {
                       Reservar quadra
                     </button>
                     <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Disponível em breve
+                      <Lock className="w-3.5 h-3.5" />
+                      Serviço bloqueado
                     </p>
 
                     <div className="mt-6 pt-6 border-t dark:border-gray-700">
