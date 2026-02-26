@@ -6,27 +6,22 @@ import { Court } from "@/types/court";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-function createPriceIcon(price: number, isActive: boolean) {
+function createPinIcon(isActive: boolean) {
   const bg = isActive ? '#6AB945' : '#1a1a1a';
-  const scale = isActive ? 'scale(1.15)' : 'scale(1)';
+  const size = isActive ? 16 : 12;
   return L.divIcon({
     className: '',
     html: `<div style="
-      display:inline-block;
+      width:${size}px;
+      height:${size}px;
       background:${bg};
-      color:#fff;
-      padding:5px 10px;
-      border-radius:20px;
-      font-size:13px;
-      font-weight:700;
-      white-space:nowrap;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      border-radius:50%;
       border:2px solid #fff;
-      transform:translateX(-50%) ${scale};
-      transform-origin:bottom center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+      transform:translate(-50%,-50%);
       transition:all 0.15s;
-    ">R$${Math.round(price)}</div>`,
-    iconAnchor: [0, 16],
+    "></div>`,
+    iconAnchor: [0, 0],
   });
 }
 
@@ -70,7 +65,7 @@ export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClic
             <Marker
               key={court.id}
               position={[court.coordenadas.lat, court.coordenadas.lng]}
-              icon={createPriceIcon(court.precoPorHora ?? 0, isActive)}
+              icon={createPinIcon(isActive)}
               eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onCourtClick?.(court); } }}
             />
           );
