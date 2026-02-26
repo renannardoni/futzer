@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getQuadraById, type Quadra } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X, Lock } from "lucide-react";
 
 const QuadraMap = dynamic(
   () => import('@/components/quadra-map').then(m => m.QuadraMap),
@@ -337,12 +337,19 @@ export default function QuadraPage() {
             {/* Sidebar - reserva */}
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700 sticky top-24">
+
+                {/* Price + phone — always visible */}
                 <div className="mb-6">
                   <div className="flex items-baseline mb-4">
-                    {quadra.precoPorHora != null
-                      ? <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
-                      : <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
-                    }
+                    {quadra.modalidade === 'publica' ? (
+                      <span className="text-2xl font-bold text-[#6AB945]">Gratuita</span>
+                    ) : quadra.modalidade === 'clube' ? (
+                      <span className="text-2xl font-bold text-gray-700 dark:text-gray-200">Sócio</span>
+                    ) : quadra.precoPorHora != null ? (
+                      <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
+                    ) : (
+                      <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
+                    )}
                   </div>
                   {quadra.telefone && (
                     <a href={`tel:${quadra.telefone}`} className="flex items-center gap-2 text-sm text-[#6AB945] hover:underline">
@@ -350,36 +357,66 @@ export default function QuadraPage() {
                     </a>
                   )}
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
-                    <input type="date" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2 dark:text-gray-200">Início</label>
-                      <input type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
+
+                {/* ALUGUEL — booking form (locked, em breve) */}
+                {quadra.modalidade === 'aluguel' && (
+                  <>
+                    <div className="space-y-4 mb-6 opacity-50 pointer-events-none select-none">
+                      <div>
+                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
+                        <input disabled type="date" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Início</label>
+                          <input disabled type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Fim</label>
+                          <input disabled type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 dark:text-gray-200">Fim</label>
-                      <input type="time" className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent" />
+
+                    <button
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 bg-[#6AB945] text-white py-4 text-lg font-semibold rounded-lg opacity-50 cursor-not-allowed"
+                    >
+                      <Lock className="w-5 h-5" />
+                      Reservar quadra
+                    </button>
+                    <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Disponível em breve
+                    </p>
+
+                    <div className="mt-6 pt-6 border-t dark:border-gray-700">
+                      <div className="flex justify-between mb-2 opacity-50">
+                        <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
+                        <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-lg mt-4 opacity-50">
+                        <span className="dark:text-white">Total</span>
+                        <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                      </div>
                     </div>
+                  </>
+                )}
+
+                {/* PÚBLICA */}
+                {quadra.modalidade === 'publica' && (
+                  <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 text-sm text-green-800 dark:text-green-300">
+                    🏟️ Esta é uma quadra pública de acesso gratuito. Entre em contato ou visite o local para mais informações.
                   </div>
-                </div>
-                <Button className="w-full bg-[#6AB945] hover:bg-[#5aa835] text-white py-6 text-lg font-semibold">
-                  Reservar agora
-                </Button>
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">Você ainda não será cobrado</p>
-                <div className="mt-6 pt-6 border-t dark:border-gray-700">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
-                    <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                )}
+
+                {/* CLUBE */}
+                {quadra.modalidade === 'clube' && (
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 text-sm text-blue-800 dark:text-blue-300">
+                    🏅 Esta quadra é de uso exclusivo para sócios. Entre em contato com o clube para informações sobre associação.
                   </div>
-                  <div className="flex justify-between font-semibold text-lg mt-4">
-                    <span className="dark:text-white">Total</span>
-                    <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
-                  </div>
-                </div>
+                )}
+
               </div>
             </div>
           </div>
