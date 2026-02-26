@@ -179,6 +179,7 @@ export async function getQuadras(filters?: {
   const data: Quadra[] = await response.json();
   return data.map((quadra) => ({
     ...quadra,
+    modalidade: quadra.modalidade ?? "aluguel",
     imagemCapa: normalizeImageUrl(quadra.imagemCapa),
     imagens: (quadra.imagens ?? []).map(normalizeImageUrl).filter(Boolean),
   }));
@@ -194,6 +195,7 @@ export async function getQuadraById(id: string): Promise<Quadra> {
   const quadra: Quadra = await response.json();
   return {
     ...quadra,
+    modalidade: quadra.modalidade ?? "aluguel",
     imagemCapa: normalizeImageUrl(quadra.imagemCapa),
     imagens: (quadra.imagens ?? []).map(normalizeImageUrl).filter(Boolean),
   };
