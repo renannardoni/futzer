@@ -1,4 +1,5 @@
 export type CourtType = "society" | "grama" | "salao" | "quadra" | "campo" | "areia";
+export type Modalidade = "publica" | "clube" | "aluguel";
 
 export interface Court {
   id: string;
@@ -16,6 +17,7 @@ export interface Court {
   };
   precoPorHora?: number | null;
   tipoPiso: string;
+  modalidade?: Modalidade | string;
   imagemCapa: string;
   imagens?: string[];
   avaliacao: number;

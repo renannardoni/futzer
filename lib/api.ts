@@ -55,6 +55,7 @@ export interface Quadra {
   coordenadas: Coordenadas;
   precoPorHora?: number | null;
   tipoPiso: string;
+  modalidade?: string;
   imagemCapa: string;
   imagens?: string[];
   avaliacao: number;

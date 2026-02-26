@@ -11,7 +11,9 @@ type FormData = {
   nome: string;
   descricao: string;
   tipoPiso: string;
+  modalidade: string;
   precoPorHora: string;
+  mostrarPreco: boolean;
   avaliacao: string;
   imagemCapa: string;
   imagens: string[];
@@ -34,6 +36,12 @@ const esportes = [
   { value: 'tenis', label: '🎾 Tênis' },
 ];
 
+const modalidades = [
+  { value: 'aluguel', label: '🔑 Aluguel' },
+  { value: 'clube',   label: '🏅 Clube' },
+  { value: 'publica', label: '🏟️ Pública' },
+];
+
 export function QuadraForm({ quadra, mode }: QuadraFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -51,7 +59,9 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
     nome: quadra?.nome ?? '',
     descricao: quadra?.descricao ?? '',
     tipoPiso: quadra?.tipoPiso ?? 'futebol',
+    modalidade: (quadra as Quadra & { modalidade?: string })?.modalidade ?? 'aluguel',
     precoPorHora: quadra?.precoPorHora?.toString() ?? '',
+    mostrarPreco: quadra?.precoPorHora != null,
     avaliacao: quadra?.avaliacao?.toString() ?? '0',
     imagemCapa: quadra?.imagemCapa ?? '',
     imagens: quadra?.imagens ?? [],
@@ -157,7 +167,9 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
     e.preventDefault();
     setError(null);
 
-    const precoNum = form.precoPorHora ? parseFloat(form.precoPorHora) : null;
+    const precoNum = (form.modalidade === 'aluguel' && form.mostrarPreco && form.precoPorHora)
+      ? parseFloat(form.precoPorHora)
+      : null;
     const avaliacaoNum = parseFloat(form.avaliacao);
     const latNum = parseFloat(form.lat);
     const lngNum = parseFloat(form.lng);
@@ -169,6 +181,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
       nome: form.nome,
       descricao: form.descricao,
       tipoPiso: form.tipoPiso,
+      modalidade: form.modalidade,
       precoPorHora: precoNum,
       avaliacao: avaliacaoNum,
       imagemCapa: form.imagemCapa || 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop',
@@ -244,7 +257,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
                 <label className={labelCls}>Descrição *</label>
                 <textarea required value={form.descricao} onChange={set('descricao')} rows={3} placeholder="Descreva a quadra..." className={inputCls + ' resize-none'} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Esporte *</label>
                   <select required value={form.tipoPiso} onChange={set('tipoPiso')} className={inputCls}>
@@ -252,14 +265,54 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Preço por Hora (R$)</label>
-                  <input type="number" min="1" step="0.01" value={form.precoPorHora} onChange={set('precoPorHora')} placeholder="120.00 (opcional)" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Avaliação (0–5)</label>
-                  <input type="number" min="0" max="5" step="0.1" value={form.avaliacao} onChange={set('avaliacao')} placeholder="4.5" className={inputCls} />
+                  <label className={labelCls}>Modalidade *</label>
+                  <select required value={form.modalidade} onChange={set('modalidade')} className={inputCls}>
+                    {modalidades.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
                 </div>
               </div>
+              {/* Preço — só para aluguel */}
+              {form.modalidade === 'aluguel' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className={labelCls.replace('mb-1', '')}>Preço por Hora (R$)</label>
+                      <button
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, mostrarPreco: !prev.mostrarPreco, precoPorHora: '' }))}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                          form.mostrarPreco ? 'bg-[#6AB945]' : 'bg-gray-300 dark:bg-gray-600'
+                        }`}
+                        title={form.mostrarPreco ? 'Desativar preço' : 'Ativar preço'}
+                      >
+                        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                          form.mostrarPreco ? 'translate-x-4' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    </div>
+                    <input
+                      type="number" min="1" step="0.01"
+                      value={form.precoPorHora}
+                      onChange={set('precoPorHora')}
+                      disabled={!form.mostrarPreco}
+                      placeholder={form.mostrarPreco ? '120.00' : 'sem preço definido (R$ -,--)' }
+                      className={inputCls + (!form.mostrarPreco ? ' opacity-50 cursor-not-allowed' : '')}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Avaliação (0–5)</label>
+                    <input type="number" min="0" max="5" step="0.1" value={form.avaliacao} onChange={set('avaliacao')} placeholder="4.5" className={inputCls} />
+                  </div>
+                </div>
+              )}
+              {form.modalidade !== 'aluguel' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Avaliação (0–5)</label>
+                    <input type="number" min="0" max="5" step="0.1" value={form.avaliacao} onChange={set('avaliacao')} placeholder="4.5" className={inputCls} />
+                  </div>
+                </div>
+              )}
               <div className="mt-4">
                 <label className={labelCls}>Telefone de contato</label>
                 <input type="tel" value={form.telefone} onChange={set('telefone')} placeholder="(11) 99999-9999 (opcional)" className={inputCls} />
