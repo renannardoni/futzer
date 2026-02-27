@@ -64,14 +64,10 @@ export function Header({
               <select
                 value={selectedCity}
                 onChange={(e) => onCityChange?.(e.target.value)}
-                className="h-10 lg:h-11 pl-7 pr-2 text-xs lg:text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
+                className="h-10 lg:h-11 pl-7 pr-6 text-xs lg:text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
               >
                 {CITIES.map(c => (
-                  <option key={c.value} value={c.value}>
-                    <span className="lg:hidden">{c.short}</span>
-                    <span className="hidden lg:inline">{c.label}</span>
-                    {c.label}
-                  </option>
+                  <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
             </div>
@@ -81,17 +77,10 @@ export function Header({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                className="lg:hidden pl-9 h-10 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-              />
-              <Input
-                type="text"
                 placeholder="Buscar quadras..."
                 value={searchTerm}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="hidden lg:block pl-9 h-11 text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                className="pl-9 h-10 lg:h-11 text-sm w-full dark:bg-gray-800 dark:border-gray-600 dark:text-white"
               />
             </div>
 
