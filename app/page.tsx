@@ -57,12 +57,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude); },
-      () => { /* permission denied — silently ignore */ },
-      { timeout: 8000 }
-    );
+    if (!navigator.geolocation || !navigator.permissions) return;
+    // só usa localização se o usuário JÁ concedeu — sem popup
+    navigator.permissions.query({ name: "geolocation" }).then((result) => {
+      if (result.state === "granted") {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude); },
+          () => {},
+          { timeout: 5000 }
+        );
+      }
+    });
   }, []);
 
   const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["sao-paulo"];
