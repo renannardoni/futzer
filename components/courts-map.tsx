@@ -8,7 +8,7 @@ import L from "leaflet";
 
 function createPinIcon(tipoPiso: string | undefined, isActive: boolean) {
   const bg = isActive ? '#6AB945' : '#2d2d2d';
-  const stroke = isActive ? '#fff' : '#fff';
+  const stroke = '#fff';
   const w = isActive ? 38 : 30;
   const h = isActive ? 50 : 40;
   const r = isActive ? 19 : 15;
@@ -39,15 +39,6 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
   return null;
 }
 
-function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo(center, zoom, { duration: 1.2 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [center[0], center[1], zoom]);
-  return null;
-}
-
 interface CourtsMapProps {
   courts: Court[];
   hoveredCourtId?: string | null;
@@ -61,24 +52,23 @@ interface CourtsMapProps {
 export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
 
-  const defaultCenter: [number, number] = cityCenter ?? [-23.5505, -46.6333];
-  const initialCenter: [number, number] =
-    userLat != null && userLng != null ? [userLat, userLng] : defaultCenter;
+  const center: [number, number] =
+    userLat != null && userLng != null
+      ? [userLat, userLng]
+      : cityCenter ?? [-23.5505, -46.6333];
 
-  const flyCenter: [number, number] =
-    userLat != null && userLng != null ? [userLat, userLng] : defaultCenter;
+  // key forces remount when city changes so center updates
+  const mapKey = `${center[0].toFixed(4)},${center[1].toFixed(4)}`;
 
   return (
     <div className="h-full w-full">
-      <MapContainer center={initialCenter} zoom={13} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
+      <MapContainer key={mapKey} center={center} zoom={13} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-        <MapController center={flyCenter} zoom={13} />
         <MapClickHandler onMapClick={handleMapClick} />
 
-        {/* User location dot */}
         {userLat != null && userLng != null && (
           <CircleMarker
             center={[userLat, userLng]}
