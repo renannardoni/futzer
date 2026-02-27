@@ -16,8 +16,30 @@ export const metadata: Metadata = {
   title: "Futzer",
   description: "Alugue quadras de futebol e tênis perto de você. Rápido, fácil e seguro.",
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.png",
     apple: "/logo.png",
+  },
+  openGraph: {
+    title: "Futzer",
+    description: "Alugue quadras de futebol e tênis perto de você. Rápido, fácil e seguro.",
+    url: "https://www.futzer.com.br",
+    siteName: "Futzer",
+    images: [
+      {
+        url: "https://www.futzer.com.br/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Futzer",
+      },
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Futzer",
+    description: "Alugue quadras de futebol e tênis perto de você. Rápido, fácil e seguro.",
+    images: ["https://www.futzer.com.br/logo.png"],
   },
 };
 
