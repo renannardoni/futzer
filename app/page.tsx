@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { Header } from "@/components/header";
+import { Header, CITIES } from "@/components/header";
 import { CourtCard } from "@/components/court-card";
 import { getQuadras, type Quadra } from "@/lib/api";
 import { Star, MapPin, X, ChevronRight } from "lucide-react";
@@ -25,13 +25,29 @@ function getImg(url?: string) {
   return url;
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const CITY_CONFIG: Record<string, { center: [number, number]; names: string[] }> = {
+  "sao-paulo": { center: [-23.5505, -46.6333], names: ["são paulo", "sao paulo"] },
+  "campinas":  { center: [-22.9056, -47.0608], names: ["campinas"] },
+};
+
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("todos");
+  const [selectedCity, setSelectedCity] = useState("sao-paulo");
   const [hoveredCourtId, setHoveredCourtId] = useState<string | null>(null);
   const [selectedCourt, setSelectedCourt] = useState<Quadra | null>(null);
   const [courts, setCourts] = useState<Quadra[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
 
   useEffect(() => {
     getQuadras()
@@ -40,13 +56,36 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setUserLat(pos.coords.latitude); setUserLng(pos.coords.longitude); },
+      () => { /* permission denied — silently ignore */ },
+      { timeout: 8000 }
+    );
+  }, []);
+
+  const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["sao-paulo"];
+  const cityLabel = CITIES.find(c => c.value === selectedCity)?.label ?? "São Paulo";
+
   const filteredCourts = useMemo(() => {
-    return courts.filter((court) => {
+    const cityNames = cityConfig.names;
+    let list = courts.filter((court) => {
       const matchesSearch = court.nome.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = selectedType === "todos" || court.tipoPiso === selectedType;
-      return matchesSearch && matchesType;
+      const matchesCity = cityNames.some(n => court.endereco.cidade?.toLowerCase().includes(n));
+      return matchesSearch && matchesType && matchesCity;
     });
-  }, [courts, searchTerm, selectedType]);
+
+    if (userLat != null && userLng != null) {
+      list = [...list].sort((a, b) =>
+        haversineKm(userLat, userLng, a.coordenadas.lat, a.coordenadas.lng) -
+        haversineKm(userLat, userLng, b.coordenadas.lat, b.coordenadas.lng)
+      );
+    }
+
+    return list;
+  }, [courts, searchTerm, selectedType, selectedCity, userLat, userLng, cityConfig]);
 
   const courtList = (
     <>
@@ -65,7 +104,8 @@ export default function Home() {
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground dark:text-gray-400">
-            {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em São Paulo
+            {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em {cityLabel}
+            {userLat != null && <span className="ml-1 text-[#6AB945]">· ordenadas por proximidade</span>}
           </p>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {filteredCourts.map((court) => (
@@ -97,6 +137,8 @@ export default function Home() {
         onSearchChange={setSearchTerm}
         selectedType={selectedType}
         onTypeChange={setSelectedType}
+        selectedCity={selectedCity}
+        onCityChange={setSelectedCity}
       />
 
       {/* ── MOBILE layout ──────────────────────────────────── */}
@@ -107,6 +149,9 @@ export default function Home() {
             courts={filteredCourts}
             selectedCourtId={selectedCourt?.id}
             onCourtClick={setSelectedCourt}
+            userLat={userLat}
+            userLng={userLng}
+            cityCenter={cityConfig.center}
           />
 
           {/* Bottom preview card when marker is tapped */}
@@ -180,6 +225,9 @@ export default function Home() {
             hoveredCourtId={hoveredCourtId}
             selectedCourtId={selectedCourt?.id}
             onCourtClick={setSelectedCourt}
+            userLat={userLat}
+            userLng={userLng}
+            cityCenter={cityConfig.center}
           />
 
           {/* Bottom preview card when marker is clicked */}

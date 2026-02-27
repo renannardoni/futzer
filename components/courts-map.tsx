@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, CircleMarker, useMap } from "react-leaflet";
 import { Court } from "@/types/court";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -14,9 +14,6 @@ function createPinIcon(tipoPiso: string | undefined, isActive: boolean) {
   const r = isActive ? 19 : 15;
   const emoji = tipoPiso === 'tenis' ? '🎾' : tipoPiso === 'areia' ? '🏖️' : '⚽';
   const fontSize = isActive ? 15 : 12;
-  const shadow = isActive
-    ? '0 4px 14px rgba(106,185,69,0.55)'
-    : '0 2px 8px rgba(0,0,0,0.35)';
   const cx = w / 2;
   const cy = r;
   return L.divIcon({
@@ -42,31 +39,54 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
   return null;
 }
 
+function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 1.2 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center[0], center[1], zoom]);
+  return null;
+}
+
 interface CourtsMapProps {
   courts: Court[];
   hoveredCourtId?: string | null;
   selectedCourtId?: string | null;
   onCourtClick?: (court: Court | null) => void;
+  userLat?: number | null;
+  userLng?: number | null;
+  cityCenter?: [number, number];
 }
 
-export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClick }: CourtsMapProps) {
+export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
 
-  const center: [number, number] = courts.length > 0
-    ? [
-        courts.reduce((sum, c) => sum + c.coordenadas.lat, 0) / courts.length,
-        courts.reduce((sum, c) => sum + c.coordenadas.lng, 0) / courts.length,
-      ]
-    : [-23.5505, -46.6333];
+  const defaultCenter: [number, number] = cityCenter ?? [-23.5505, -46.6333];
+  const initialCenter: [number, number] =
+    userLat != null && userLng != null ? [userLat, userLng] : defaultCenter;
+
+  const flyCenter: [number, number] =
+    userLat != null && userLng != null ? [userLat, userLng] : defaultCenter;
 
   return (
     <div className="h-full w-full">
-      <MapContainer center={center} zoom={12} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
+      <MapContainer center={initialCenter} zoom={13} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
+        <MapController center={flyCenter} zoom={13} />
         <MapClickHandler onMapClick={handleMapClick} />
+
+        {/* User location dot */}
+        {userLat != null && userLng != null && (
+          <CircleMarker
+            center={[userLat, userLng]}
+            radius={10}
+            pathOptions={{ color: '#fff', weight: 3, fillColor: '#4285F4', fillOpacity: 1 }}
+          />
+        )}
+
         {courts.map((court) => {
           const isActive = selectedCourtId === court.id || hoveredCourtId === court.id;
           return (
