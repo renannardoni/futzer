@@ -6,22 +6,30 @@ import { Court } from "@/types/court";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-function createPinIcon(isActive: boolean) {
-  const bg = isActive ? '#6AB945' : '#1a1a1a';
-  const size = isActive ? 16 : 12;
+function createPinIcon(tipoPiso: string | undefined, isActive: boolean) {
+  const bg = isActive ? '#6AB945' : '#2d2d2d';
+  const stroke = isActive ? '#fff' : '#fff';
+  const w = isActive ? 38 : 30;
+  const h = isActive ? 50 : 40;
+  const r = isActive ? 19 : 15;
+  const emoji = tipoPiso === 'tenis' ? '🎾' : '⚽';
+  const fontSize = isActive ? 15 : 12;
+  const shadow = isActive
+    ? '0 4px 14px rgba(106,185,69,0.55)'
+    : '0 2px 8px rgba(0,0,0,0.35)';
+  const cx = w / 2;
+  const cy = r;
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:${size}px;
-      height:${size}px;
-      background:${bg};
-      border-radius:50%;
-      border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,0.35);
-      transform:translate(-50%,-50%);
-      transition:all 0.15s;
-    "></div>`,
-    iconAnchor: [0, 0],
+    html: `
+      <div style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3)); transition:all 0.15s;">
+        <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+          <path d="M${cx} ${h - 2} C${cx} ${h - 2} 2 ${cy + 10} 2 ${cy} a${r - 2} ${r - 2} 0 1 1 ${w - 4} 0 C${w - 2} ${cy + 10} ${cx} ${h - 2} ${cx} ${h - 2}Z"
+            fill="${bg}" stroke="${stroke}" stroke-width="2"/>
+          <text x="${cx}" y="${cy + 1}" text-anchor="middle" dominant-baseline="central" font-size="${fontSize}">${emoji}</text>
+        </svg>
+      </div>`,
+    iconAnchor: [w / 2, h],
   });
 }
 
@@ -65,7 +73,7 @@ export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClic
             <Marker
               key={court.id}
               position={[court.coordenadas.lat, court.coordenadas.lng]}
-              icon={createPinIcon(isActive)}
+              icon={createPinIcon(court.tipoPiso, isActive)}
               eventHandlers={{ click: (e) => { e.originalEvent.stopPropagation(); onCourtClick?.(court); } }}
             />
           );
