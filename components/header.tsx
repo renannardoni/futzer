@@ -11,12 +11,13 @@ interface HeaderProps {
 }
 
 export function Header({ searchTerm = "", onSearchChange, selectedType = "todos", onTypeChange }: HeaderProps) {
-  const borderColor = selectedType === "tenis" ? "#C26B3A" : "#6AB945";
+  const borderColor = selectedType === "tenis" ? "#C26B3A" : selectedType === "areia" ? "#D4962A" : "#6AB945";
 
   const opts = [
     { value: "todos",   short: "Todos", long: "Todos"      },
     { value: "futebol", short: "⚽",    long: "⚽ Futebol" },
     { value: "tenis",   short: "🎾",    long: "🎾 Tênis"  },
+    { value: "areia",   short: "🏖️",    long: "🏖️ Areia"  },
   ];
 
   return (
@@ -69,6 +70,8 @@ export function Header({ searchTerm = "", onSearchChange, selectedType = "todos"
                 const isActive = selectedType === opt.value;
                 const activeStyle = opt.value === "tenis"
                   ? { backgroundColor: "#C26B3A", color: "#fff" }
+                  : opt.value === "areia"
+                  ? { backgroundColor: "#D4962A", color: "#fff" }
                   : { backgroundColor: "#6AB945", color: "#fff" };
                 return (
                   <button

@@ -308,6 +308,7 @@ export default function QuadraPage() {
                       <p className="text-gray-600 dark:text-gray-400">
                         {quadra.tipoPiso === 'futebol' ? '⚽ Futebol'
                           : quadra.tipoPiso === 'tenis' ? '🎾 Tênis'
+                          : quadra.tipoPiso === 'areia' ? '🏖️ Areia'
                           : quadra.tipoPiso}
                       </p>
                     </div>

@@ -19,7 +19,7 @@ const courtTypeLabels: Record<string, string> = {
   salao: "⚽ Futebol",
   quadra: "⚽ Futebol",
   campo: "⚽ Futebol",
-  areia: "⚽ Futebol",
+  areia: "🏖️ Areia",
 };
 
 const modalidadeLabels: Record<string, string> = {

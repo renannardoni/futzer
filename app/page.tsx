@@ -82,13 +82,13 @@ export default function Home() {
     </>
   );
 
-  const isTenis = selectedType === "tenis";
+  const pageBg = selectedType === "tenis" ? "#F5E6D5" : selectedType === "areia" ? "#FFF3D4" : "#ffffff";
 
   return (
     <div
       className="min-h-screen dark:bg-gray-900"
       style={{
-        backgroundColor: isTenis ? "#F5E6D5" : "#ffffff",
+        backgroundColor: pageBg,
         transition: "background-color 0.5s ease",
       }}
     >
@@ -159,7 +159,7 @@ export default function Home() {
         </div>
 
         {/* Drag handle hint */}
-        <div className="flex justify-center py-2 dark:bg-gray-900" style={{ backgroundColor: isTenis ? "#F5E6D5" : "#ffffff", transition: "background-color 0.5s ease" }}>
+        <div className="flex justify-center py-2 dark:bg-gray-900" style={{ backgroundColor: pageBg, transition: "background-color 0.5s ease" }}>
           <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
         </div>
 

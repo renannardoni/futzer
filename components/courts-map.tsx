@@ -12,7 +12,7 @@ function createPinIcon(tipoPiso: string | undefined, isActive: boolean) {
   const w = isActive ? 38 : 30;
   const h = isActive ? 50 : 40;
   const r = isActive ? 19 : 15;
-  const emoji = tipoPiso === 'tenis' ? '🎾' : '⚽';
+  const emoji = tipoPiso === 'tenis' ? '🎾' : tipoPiso === 'areia' ? '🏖️' : '⚽';
   const fontSize = isActive ? 15 : 12;
   const shadow = isActive
     ? '0 4px 14px rgba(106,185,69,0.55)'
