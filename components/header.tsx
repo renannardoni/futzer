@@ -56,7 +56,7 @@ export function Header({
 
         {/* Search + city + filtro centralizado */}
         <div className="flex-1 flex justify-center min-w-0">
-          <div className="flex gap-2 lg:gap-3 w-full max-w-2xl min-w-0">
+          <div className="flex gap-2 lg:gap-3 w-full max-w-3xl min-w-0">
 
             {/* City selector */}
             <div className="relative shrink-0">
