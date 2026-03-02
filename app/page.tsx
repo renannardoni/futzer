@@ -41,7 +41,7 @@ const CITY_CONFIG: Record<string, { center: [number, number]; names: string[] }>
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("todos");
-  const [selectedCity, setSelectedCity] = useState("sao-paulo");
+  const [selectedCity, setSelectedCity] = useState("campinas");
   const [hoveredCourtId, setHoveredCourtId] = useState<string | null>(null);
   const [selectedCourt, setSelectedCourt] = useState<Quadra | null>(null);
   const [courts, setCourts] = useState<Quadra[]>([]);
@@ -70,8 +70,8 @@ export default function Home() {
     });
   }, []);
 
-  const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["sao-paulo"];
-  const cityLabel = CITIES.find(c => c.value === selectedCity)?.label ?? "São Paulo";
+  const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["campinas"];
+  const cityLabel = CITIES.find(c => c.value === selectedCity)?.label ?? "Campinas";
 
   const filteredCourts = useMemo(() => {
     const cityNames = cityConfig.names;

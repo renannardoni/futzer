@@ -55,7 +55,7 @@ export function CourtsMap({ courts, hoveredCourtId, selectedCourtId, onCourtClic
   const center: [number, number] =
     userLat != null && userLng != null
       ? [userLat, userLng]
-      : cityCenter ?? [-23.5505, -46.6333];
+      : cityCenter ?? [-22.9056, -47.0608];
 
   // key forces remount when city changes so center updates
   const mapKey = `${center[0].toFixed(4)},${center[1].toFixed(4)}`;

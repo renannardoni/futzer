@@ -24,7 +24,7 @@ export function Header({
   onSearchChange,
   selectedType = "todos",
   onTypeChange,
-  selectedCity = "sao-paulo",
+  selectedCity = "campinas",
   onCityChange,
 }: HeaderProps) {
   const borderColor = selectedType === "tenis" ? "#C26B3A" : selectedType === "areia" ? "#D4962A" : "#6AB945";
