@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Header, CITIES } from "@/components/header";
 import { CourtCard } from "@/components/court-card";
 import { getQuadras, type Quadra } from "@/lib/api";
+import { mockCourts } from "@/lib/mock-data";
 import { Star, MapPin, X, ChevronRight } from "lucide-react";
 
 const CourtsMap = dynamic(() => import("@/components/courts-map").then(mod => ({ default: mod.CourtsMap })), {
@@ -52,7 +53,7 @@ export default function Home() {
   useEffect(() => {
     getQuadras()
       .then(setCourts)
-      .catch(console.error)
+      .catch(() => setCourts(mockCourts as Quadra[]))
       .finally(() => setLoading(false));
   }, []);
 
