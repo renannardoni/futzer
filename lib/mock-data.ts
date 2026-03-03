@@ -155,5 +155,26 @@ export const mockCourts: Court[] = [
   },
 ];
 
+  {
+    id: "9",
+    nome: "Beach Arena Campinas",
+    descricao: "Quadra de vôlei de praia com areia fina importada e iluminação LED",
+    endereco: {
+      rua: "Av. Norte Sul, 1200",
+      cidade: "Campinas",
+      estado: "SP",
+      cep: "13098-321",
+    },
+    coordenadas: {
+      lat: -22.9056,
+      lng: -47.0608,
+    },
+    precoPorHora: 100.00,
+    tipoPiso: "areia",
+    imagemCapa: "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800&h=600&fit=crop",
+    avaliacao: 4.5,
+  },
+];
+
 // Export alias for compatibility
 export const courts = mockCourts;
