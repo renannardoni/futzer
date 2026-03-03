@@ -153,8 +153,6 @@ export const mockCourts: Court[] = [
     imagemCapa: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
     avaliacao: 4.8,
   },
-];
-
   {
     id: "9",
     nome: "Beach Arena Campinas",
