@@ -5,6 +5,7 @@ import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-m
 import { Court } from "@/types/court";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
+const MAP_ID = "7d48a8d3e0d52541babf3db1";
 
 function createPinHtml(tipoPiso: string | undefined, isActive: boolean) {
   const bg = isActive ? '#6AB945' : '#2d2d2d';
@@ -40,13 +41,20 @@ interface CourtsMapProps {
 
 function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
-  const center = userLat != null && userLng != null
+
+  const defaultCenter = userLat != null && userLng != null
     ? { lat: userLat, lng: userLng }
     : cityCenter ? { lat: cityCenter[0], lng: cityCenter[1] } : { lat: -22.9056, lng: -47.0608 };
 
   return (
-    <Map defaultCenter={center} center={center} defaultZoom={13} zoom={13}
-      gestureHandling="greedy" mapId="7d48a8d3e0d52541babf3db1" style={{ height: "100%", width: "100%" }}>
+    <Map
+      key={`${defaultCenter.lat},${defaultCenter.lng}`}
+      defaultCenter={defaultCenter}
+      defaultZoom={13}
+      gestureHandling="greedy"
+      mapId={MAP_ID}
+      style={{ height: "100%", width: "100%" }}
+    >
       <MapClickHandler onMapClick={handleMapClick} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
@@ -56,9 +64,11 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
       {courts.map((court) => {
         const isActive = selectedCourtId === court.id || hoveredCourtId === court.id;
         return (
-          <AdvancedMarker key={court.id}
+          <AdvancedMarker
+            key={court.id}
             position={{ lat: court.coordenadas.lat, lng: court.coordenadas.lng }}
-            onClick={(e) => { e.stop(); onCourtClick?.(court); }}>
+            onClick={(e) => { e.stop(); onCourtClick?.(court); }}
+          >
             <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive) }} />
           </AdvancedMarker>
         );
