@@ -46,7 +46,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
 
   return (
     <Map defaultCenter={center} center={center} defaultZoom={13} zoom={13}
-      gestureHandling="greedy" style={{ height: "100%", width: "100%" }}>
+      gestureHandling="greedy" mapId="7d48a8d3e0d52541babf3db1" style={{ height: "100%", width: "100%" }}>
       <MapClickHandler onMapClick={handleMapClick} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
