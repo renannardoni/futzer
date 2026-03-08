@@ -321,7 +321,7 @@ export async function getMinhasQuadras(): Promise<Quadra[]> {
 }
 
 export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'created_at' | 'updated_at'>): Promise<Quadra> {
-  const token = getToken() || getAdminToken();
+  const token = getAdminToken() || getToken();
   const response = await fetch(`${API_URL}/quadras/`, {
     method: 'POST',
     headers: {
@@ -340,7 +340,7 @@ export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'cre
 }
 
 export async function updateQuadra(id: string, updates: Partial<Quadra>): Promise<Quadra> {
-  const token = getToken() || getAdminToken();
+  const token = getAdminToken() || getToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'PUT',
     headers: {
@@ -359,7 +359,7 @@ export async function updateQuadra(id: string, updates: Partial<Quadra>): Promis
 }
 
 export async function deleteQuadra(id: string): Promise<void> {
-  const token = getToken() || getAdminToken();
+  const token = getAdminToken() || getToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'DELETE',
     headers: token ? { 'Authorization': `Bearer ${token}` } : {},
