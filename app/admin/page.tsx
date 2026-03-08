@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getQuadras, deleteQuadra, type Quadra } from '@/lib/api';
-import { Plus, Pencil, Trash2, MapPin, Star, RefreshCw } from 'lucide-react';
+import { getQuadras, deleteQuadra, removeAdminToken, type Quadra } from '@/lib/api';
+import { Plus, Pencil, Trash2, MapPin, Star, RefreshCw, LogOut } from 'lucide-react';
+import { AdminGuard } from '@/components/admin-guard';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
 
@@ -48,7 +49,13 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogout = () => {
+    removeAdminToken();
+    window.location.href = '/admin/login';
+  };
+
   return (
+    <AdminGuard>
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       {/* Top bar */}
       <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 shadow-sm sticky top-0 z-10">
@@ -75,6 +82,13 @@ export default function AdminPage() {
               <Plus className="w-4 h-4" />
               Nova Quadra
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              title="Sair do admin"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
@@ -215,5 +229,6 @@ export default function AdminPage() {
         )}
       </main>
     </div>
+    </AdminGuard>
   );
 }

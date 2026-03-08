@@ -128,6 +128,7 @@ export interface LoginResponse {
 
 // Storage helpers
 const TOKEN_KEY = 'futzer_token';
+const ADMIN_TOKEN_KEY = 'futzer_admin_token';
 
 export const saveToken = (token: string) => {
   if (typeof window !== 'undefined') {
@@ -147,6 +148,35 @@ export const removeToken = () => {
     localStorage.removeItem(TOKEN_KEY);
   }
 };
+
+// Admin auth helpers
+export const saveAdminToken = (token: string) => {
+  if (typeof window !== 'undefined') localStorage.setItem(ADMIN_TOKEN_KEY, token);
+};
+
+export const getAdminToken = (): string | null => {
+  if (typeof window !== 'undefined') return localStorage.getItem(ADMIN_TOKEN_KEY);
+  return null;
+};
+
+export const removeAdminToken = () => {
+  if (typeof window !== 'undefined') localStorage.removeItem(ADMIN_TOKEN_KEY);
+};
+
+export async function adminLogin(password: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/admin-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Senha incorreta');
+  }
+  const data = await response.json();
+  saveAdminToken(data.access_token);
+  return data;
+}
 
 // API functions
 export async function registerUser(nome: string, email: string, password: string): Promise<User> {
@@ -291,7 +321,7 @@ export async function getMinhasQuadras(): Promise<Quadra[]> {
 }
 
 export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'created_at' | 'updated_at'>): Promise<Quadra> {
-  const token = getToken();
+  const token = getToken() || getAdminToken();
   const response = await fetch(`${API_URL}/quadras/`, {
     method: 'POST',
     headers: {
@@ -310,7 +340,7 @@ export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'cre
 }
 
 export async function updateQuadra(id: string, updates: Partial<Quadra>): Promise<Quadra> {
-  const token = getToken();
+  const token = getToken() || getAdminToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'PUT',
     headers: {
@@ -329,7 +359,7 @@ export async function updateQuadra(id: string, updates: Partial<Quadra>): Promis
 }
 
 export async function deleteQuadra(id: string): Promise<void> {
-  const token = getToken();
+  const token = getToken() || getAdminToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'DELETE',
     headers: token ? { 'Authorization': `Bearer ${token}` } : {},

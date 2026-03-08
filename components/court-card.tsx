@@ -47,7 +47,7 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
-        <div className="relative h-48 w-full">
+        <div className="relative h-36 w-full">
           <Image
             src={getImageSrc(court.imagemCapa)}
             alt={court.nome}
@@ -56,7 +56,7 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
             unoptimized={getImageSrc(court.imagemCapa).includes('localhost')}
           />
           {/* Badges empilhados no canto superior direito */}
-          <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
             <Badge className="bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-white dark:hover:bg-gray-800">
               {courtTypeLabels[court.tipoPiso] ?? court.tipoPiso}
             </Badge>
@@ -67,20 +67,20 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
             )}
           </div>
         </div>
-        <CardContent className="p-4 dark:bg-gray-800">
+        <CardContent className="p-3 dark:bg-gray-800">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-base line-clamp-1 dark:text-white">{court.nome}</h3>
+            <h3 className="font-semibold text-sm line-clamp-1 dark:text-white">{court.nome}</h3>
             <div className="flex items-center gap-1 shrink-0">
               <Star className="h-4 w-4 fill-current text-yellow-500" />
               <span className="text-sm font-medium dark:text-gray-200">{court.avaliacao}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-gray-400 mb-3">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground dark:text-gray-400 mb-2">
             <MapPin className="h-4 w-4" />
             <span className="line-clamp-1">{court.endereco.rua}</span>
           </div>
           <div className="flex items-end justify-between gap-2">
-            <div className="text-lg font-semibold dark:text-white">
+            <div className="text-base font-semibold dark:text-white">
               {showPrice ? (
                 court.precoPorHora != null
                   ? <>{"R$ "}{court.precoPorHora.toFixed(0)}<span className="text-sm font-normal text-muted-foreground dark:text-gray-400">/hora</span></>

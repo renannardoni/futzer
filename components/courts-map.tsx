@@ -9,11 +9,11 @@ const MAP_ID = "7d48a8d3e0d52541babf3db1";
 
 function createPinHtml(tipoPiso: string | undefined, isActive: boolean) {
   const bg = isActive ? '#6AB945' : '#2d2d2d';
-  const w = isActive ? 38 : 30;
-  const h = isActive ? 50 : 40;
-  const r = isActive ? 19 : 15;
+  const w = isActive ? 30 : 24;
+  const h = isActive ? 40 : 32;
+  const r = isActive ? 15 : 12;
   const emoji = tipoPiso === 'tenis' ? '🎾' : tipoPiso === 'areia' ? '🏖️' : '⚽';
-  const fontSize = isActive ? 15 : 12;
+  const fontSize = isActive ? 12 : 10;
   const cx = w / 2;
   const cy = r;
   return `<div style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.3));cursor:pointer;"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg"><path d="M${cx} ${h-2} C${cx} ${h-2} 2 ${cy+10} 2 ${cy} a${r-2} ${r-2} 0 1 1 ${w-4} 0 C${w-2} ${cy+10} ${cx} ${h-2} ${cx} ${h-2}Z" fill="${bg}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="central" font-size="${fontSize}">${emoji}</text></svg></div>`;

@@ -150,7 +150,7 @@ function QuadrasContent() {
 
       {/* ── MOBILE layout ──────────────────────────────────── */}
       <div className="lg:hidden flex flex-col">
-        <div className="relative h-[55vh]">
+        <div className="relative h-[44vh]">
           <CourtsMap
             courts={filteredCourts}
             selectedCourtId={selectedCourt?.id}
@@ -218,7 +218,7 @@ function QuadrasContent() {
       </div>
 
       {/* ── DESKTOP layout ─────────────────────────────────── */}
-      <main className="hidden lg:grid lg:grid-cols-2 h-[calc(100vh-96px)]">
+      <main className="hidden lg:grid lg:grid-cols-[1fr_0.8fr] h-[calc(100vh-96px)]">
         <div className="overflow-y-auto px-6 py-6 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>

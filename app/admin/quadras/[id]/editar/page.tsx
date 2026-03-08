@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { getQuadraById, type Quadra } from '@/lib/api';
 import { QuadraForm } from '@/components/quadra-form';
+import { AdminGuard } from '@/components/admin-guard';
 
 export default function EditarQuadraPage() {
   const params = useParams();
@@ -39,5 +40,5 @@ export default function EditarQuadraPage() {
     );
   }
 
-  return <QuadraForm mode="editar" quadra={quadra} />;
+  return <AdminGuard><QuadraForm mode="editar" quadra={quadra} /></AdminGuard>;
 }
