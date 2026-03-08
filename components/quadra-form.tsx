@@ -29,6 +29,7 @@ type FormData = {
 interface QuadraFormProps {
   quadra?: Quadra;
   mode: 'criar' | 'editar';
+  redirectTo?: string;
 }
 
 const esportes = [
@@ -42,7 +43,7 @@ const modalidades = [
   { value: 'publica', label: '🏟️ Pública' },
 ];
 
-export function QuadraForm({ quadra, mode }: QuadraFormProps) {
+export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,7 +199,7 @@ export function QuadraForm({ quadra, mode }: QuadraFormProps) {
       } else if (quadra) {
         await updateQuadra(quadra.id, payload);
       }
-      router.push('/admin');
+      router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar quadra');
     } finally {

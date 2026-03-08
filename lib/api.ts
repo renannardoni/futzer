@@ -47,6 +47,35 @@ export interface Coordenadas {
   lng: number;
 }
 
+export interface HorarioDia {
+  aberto: boolean;
+  inicio: string;
+  fim: string;
+  intervalo: number;
+}
+
+export interface HorariosSemanais {
+  seg: HorarioDia;
+  ter: HorarioDia;
+  qua: HorarioDia;
+  qui: HorarioDia;
+  sex: HorarioDia;
+  sab: HorarioDia;
+  dom: HorarioDia;
+}
+
+export const DEFAULT_HORARIO_DIA: HorarioDia = { aberto: true, inicio: "08:00", fim: "22:00", intervalo: 60 };
+
+export const DEFAULT_HORARIOS_SEMANAIS: HorariosSemanais = {
+  seg: { ...DEFAULT_HORARIO_DIA },
+  ter: { ...DEFAULT_HORARIO_DIA },
+  qua: { ...DEFAULT_HORARIO_DIA },
+  qui: { ...DEFAULT_HORARIO_DIA },
+  sex: { ...DEFAULT_HORARIO_DIA },
+  sab: { ...DEFAULT_HORARIO_DIA },
+  dom: { aberto: false, inicio: "08:00", fim: "18:00", intervalo: 60 },
+};
+
 export interface Quadra {
   id: string;
   nome: string;
@@ -61,6 +90,8 @@ export interface Quadra {
   avaliacao: number;
   telefone?: string | null;
   owner_id?: string;
+  horariosSemanais?: HorariosSemanais;
+  datasBloqueadas?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -219,10 +250,36 @@ export async function uploadImage(file: File): Promise<string> {
   return normalizeImageUrl(data.url);
 }
 
+export async function getMinhasQuadras(): Promise<Quadra[]> {
+  const token = getToken();
+  if (!token) throw new Error('Não autenticado');
+
+  const response = await fetch(`${API_URL}/quadras/minhas`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) { removeToken(); throw new Error('Sessão expirada'); }
+    throw new Error('Erro ao carregar suas quadras');
+  }
+
+  const data: Quadra[] = await response.json();
+  return data.map((quadra) => ({
+    ...quadra,
+    modalidade: quadra.modalidade ?? "aluguel",
+    imagemCapa: normalizeImageUrl(quadra.imagemCapa),
+    imagens: (quadra.imagens ?? []).map(normalizeImageUrl).filter(Boolean),
+  }));
+}
+
 export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'created_at' | 'updated_at'>): Promise<Quadra> {
+  const token = getToken();
   const response = await fetch(`${API_URL}/quadras/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(quadra),
   });
 
@@ -235,9 +292,13 @@ export async function createQuadra(quadra: Omit<Quadra, 'id' | 'owner_id' | 'cre
 }
 
 export async function updateQuadra(id: string, updates: Partial<Quadra>): Promise<Quadra> {
+  const token = getToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(updates),
   });
 
@@ -250,8 +311,10 @@ export async function updateQuadra(id: string, updates: Partial<Quadra>): Promis
 }
 
 export async function deleteQuadra(id: string): Promise<void> {
+  const token = getToken();
   const response = await fetch(`${API_URL}/quadras/${id}`, {
     method: 'DELETE',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
   });
 
   if (!response.ok) {
