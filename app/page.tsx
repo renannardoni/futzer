@@ -456,9 +456,15 @@ export default function LandingPage() {
             </div>
 
             <div className="owner-section">
-              <Link href="/admin" className="owner-btn">
-                Dono de Quadra &mdash; Entrar
-              </Link>
+              <p className="section-label" style={{ marginBottom: "12px" }}>Dono de quadra?</p>
+              <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                <Link href="/owner/login" className="owner-btn">
+                  Entrar
+                </Link>
+                <Link href="/owner/cadastro" className="owner-btn" style={{ background: "rgba(34,197,94,0.15)", borderColor: "#22c55e" }}>
+                  Criar conta
+                </Link>
+              </div>
             </div>
           </div>
 
