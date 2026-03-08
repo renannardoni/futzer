@@ -346,6 +346,92 @@ export default function LandingPage() {
             <circle cx="250" cy="250" r="4" fill="#1a1a1a" opacity="0.5"/>
             <circle cx="1150" cy="450" r="4" fill="white" opacity="0.6"/>
             <circle cx="900" cy="680" r="5" fill="white" opacity="0.4"/>
+
+            {/* Extra decorative elements */}
+            {/* Top-left area - small hexagons */}
+            <polygon points="160,60 175,68 175,84 160,92 145,84 145,68" fill="none" stroke="#1a1a1a" strokeWidth="2.5" opacity="0.4"/>
+            <polygon points="320,120 332,127 332,141 320,148 308,141 308,127" fill="none" stroke="#1a1a1a" strokeWidth="2" opacity="0.35"/>
+
+            {/* Top area - dots and connections */}
+            <circle cx="450" cy="80" r="5" fill="#1a1a1a" opacity="0.5"/>
+            <circle cx="490" cy="60" r="4" fill="#1a1a1a" opacity="0.4"/>
+            <circle cx="480" cy="110" r="3.5" fill="#1a1a1a" opacity="0.45"/>
+            <line x1="450" y1="80" x2="490" y2="60" stroke="#1a1a1a" strokeWidth="1.8" opacity="0.4"/>
+            <line x1="450" y1="80" x2="480" y2="110" stroke="#1a1a1a" strokeWidth="1.8" opacity="0.4"/>
+
+            {/* Top-center stars */}
+            <polygon points="760,50 764,58 772,58 766,64 768,72 760,68 752,72 754,64 748,58 756,58" fill="#1a1a1a" opacity="0.3"/>
+            <polygon points="920,95 923,101 929,101 924,105 926,111 920,108 914,111 916,105 911,101 917,101" fill="white" opacity="0.35"/>
+
+            {/* Top-right area - network cluster */}
+            <circle cx="1320" cy="80" r="5" fill="white" opacity="0.5"/>
+            <circle cx="1360" cy="60" r="4" fill="white" opacity="0.4"/>
+            <circle cx="1380" cy="100" r="5" fill="white" opacity="0.45"/>
+            <circle cx="1340" cy="120" r="3.5" fill="white" opacity="0.35"/>
+            <line x1="1320" y1="80" x2="1360" y2="60" stroke="white" strokeWidth="2" opacity="0.4"/>
+            <line x1="1320" y1="80" x2="1380" y2="100" stroke="white" strokeWidth="2" opacity="0.4"/>
+            <line x1="1380" y1="100" x2="1340" y2="120" stroke="white" strokeWidth="2" opacity="0.4"/>
+
+            {/* Right side - hexagons */}
+            <polygon points="1500,180 1515,188 1515,204 1500,212 1485,204 1485,188" fill="none" stroke="white" strokeWidth="2.5" opacity="0.35"/>
+            <polygon points="1550,350 1562,357 1562,371 1550,378 1538,371 1538,357" fill="none" stroke="white" strokeWidth="2" opacity="0.3"/>
+
+            {/* Left side mid - more elements */}
+            <circle cx="30" cy="480" r="5" fill="#1a8a30" opacity="0.5"/>
+            <circle cx="60" cy="510" r="4" fill="#1a8a30" opacity="0.4"/>
+            <line x1="30" y1="480" x2="60" y2="510" stroke="#1a8a30" strokeWidth="2" opacity="0.4"/>
+            <polygon points="120,550 132,557 132,571 120,578 108,571 108,557" fill="none" stroke="white" strokeWidth="2.5" opacity="0.3"/>
+
+            {/* Center-left area dots */}
+            <circle cx="350" cy="420" r="3" fill="white" opacity="0.35"/>
+            <circle cx="280" cy="500" r="4" fill="white" opacity="0.3"/>
+            <polygon points="400,520 407,524 405,532 395,532 393,524" fill="white" opacity="0.35"/>
+
+            {/* Center-right scattered */}
+            <circle cx="1050" cy="400" r="3.5" fill="white" opacity="0.4"/>
+            <circle cx="1100" cy="350" r="4" fill="white" opacity="0.3"/>
+            <line x1="1050" y1="400" x2="1100" y2="350" stroke="white" strokeWidth="1.5" opacity="0.3"/>
+            <polygon points="1250,500 1257,504 1255,512 1245,512 1243,504" fill="white" opacity="0.4"/>
+
+            {/* Bottom-left area */}
+            <circle cx="80" cy="680" r="6" fill="#1a8a30" opacity="0.4"/>
+            <circle cx="120" cy="650" r="4" fill="#1a8a30" opacity="0.35"/>
+            <line x1="80" y1="680" x2="120" y2="650" stroke="#1a8a30" strokeWidth="2" opacity="0.35"/>
+            <polygon points="300,750 312,757 312,771 300,778 288,771 288,757" fill="none" stroke="#1a8a30" strokeWidth="2.5" opacity="0.35"/>
+            <polygon points="50,790 57,794 55,802 45,802 43,794" fill="#1a1a1a" opacity="0.4"/>
+
+            {/* Bottom-center area */}
+            <circle cx="550" cy="780" r="4" fill="white" opacity="0.3"/>
+            <circle cx="590" cy="760" r="3.5" fill="white" opacity="0.35"/>
+            <circle cx="580" cy="810" r="3" fill="white" opacity="0.25"/>
+            <line x1="550" y1="780" x2="590" y2="760" stroke="white" strokeWidth="1.5" opacity="0.3"/>
+            <line x1="550" y1="780" x2="580" y2="810" stroke="white" strokeWidth="1.5" opacity="0.3"/>
+            <polygon points="750,820 762,827 762,841 750,848 738,841 738,827" fill="none" stroke="white" strokeWidth="2" opacity="0.25"/>
+            <polygon points="950,780 957,784 955,792 945,792 943,784" fill="white" opacity="0.3"/>
+
+            {/* Bottom-right area */}
+            <circle cx="1200" cy="700" r="4" fill="#1a1a1a" opacity="0.45"/>
+            <circle cx="1240" cy="720" r="5" fill="#1a1a1a" opacity="0.4"/>
+            <line x1="1200" y1="700" x2="1240" y2="720" stroke="#1a1a1a" strokeWidth="2" opacity="0.4"/>
+            <polygon points="1100,790 1112,797 1112,811 1100,818 1088,811 1088,797" fill="none" stroke="#1a1a1a" strokeWidth="2.5" opacity="0.35"/>
+            <polygon points="1550,600 1558,604 1556,612 1544,612 1542,604" fill="#1a1a1a" opacity="0.5"/>
+            <circle cx="1500" cy="500" r="4" fill="white" opacity="0.3"/>
+
+            {/* Scattered small dots for texture */}
+            <circle cx="200" cy="180" r="2.5" fill="#1a1a1a" opacity="0.35"/>
+            <circle cx="430" cy="300" r="2.5" fill="#1a1a1a" opacity="0.3"/>
+            <circle cx="680" cy="140" r="3" fill="#1a1a1a" opacity="0.3"/>
+            <circle cx="850" cy="380" r="2.5" fill="white" opacity="0.25"/>
+            <circle cx="1000" cy="550" r="3" fill="white" opacity="0.3"/>
+            <circle cx="1450" cy="450" r="3" fill="white" opacity="0.35"/>
+            <circle cx="200" cy="600" r="3" fill="white" opacity="0.25"/>
+            <circle cx="1300" cy="550" r="2.5" fill="#1a1a1a" opacity="0.35"/>
+            <circle cx="470" cy="700" r="3" fill="white" opacity="0.2"/>
+            <circle cx="1080" cy="650" r="3" fill="#1a1a1a" opacity="0.3"/>
+
+            {/* Extra star shapes */}
+            <polygon points="1470,280 1473,286 1479,286 1474,290 1476,296 1470,293 1464,296 1466,290 1461,286 1467,286" fill="white" opacity="0.3"/>
+            <polygon points="330,650 333,656 339,656 334,660 336,666 330,663 324,666 326,660 321,656 327,656" fill="white" opacity="0.25"/>
           </svg>
 
           <div className="overlay" />
@@ -426,6 +512,47 @@ export default function LandingPage() {
           <div className="float-el" style={{ bottom: "28%", right: "5%", animationDelay: "0.5s" }}>
             <svg width="20" height="20" viewBox="0 0 20 20" style={{ animation: "drift2 6s ease-in-out infinite 0.5s" }}>
               <circle cx="10" cy="10" r="5" fill="rgba(34,197,94,0.25)"/>
+            </svg>
+          </div>
+          {/* Extra floating elements */}
+          <div className="float-el" style={{ top: "15%", left: "20%", animationDelay: "1.5s" }}>
+            <svg width="22" height="22" viewBox="0 0 20 20" style={{ animation: "drift2 7s ease-in-out infinite 0.3s" }}>
+              <circle cx="10" cy="10" r="4" fill="rgba(255,255,255,0.1)"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ top: "35%", right: "15%", animationDelay: "0.3s" }}>
+            <svg width="35" height="35" viewBox="0 0 100 100" style={{ animation: "drift1 9s ease-in-out infinite 2s" }}>
+              <polygon points="93,50 71.5,87.2 28.5,87.2 7,50 28.5,12.8 71.5,12.8" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ bottom: "12%", left: "25%", animationDelay: "1.8s" }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" style={{ animation: "drift1 5s ease-in-out infinite 1s" }}>
+              <circle cx="10" cy="10" r="3.5" fill="rgba(34,197,94,0.2)"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ top: "60%", right: "20%", animationDelay: "0.7s" }}>
+            <svg width="28" height="28" viewBox="0 0 100 100" style={{ animation: "drift2 8s ease-in-out infinite 1.5s" }}>
+              <polygon points="93,50 71.5,87.2 28.5,87.2 7,50 28.5,12.8 71.5,12.8" fill="none" stroke="rgba(34,197,94,0.12)" strokeWidth="3"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ top: "75%", left: "8%", animationDelay: "2s" }}>
+            <svg width="25" height="25" viewBox="0 0 100 100" style={{ animation: "drift1 6.5s ease-in-out infinite 0.8s" }}>
+              <polygon points="93,50 71.5,87.2 28.5,87.2 7,50 28.5,12.8 71.5,12.8" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="3"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ top: "5%", right: "25%", animationDelay: "1s" }}>
+            <svg width="18" height="18" viewBox="0 0 20 20" style={{ animation: "drift2 7.5s ease-in-out infinite 2s" }}>
+              <circle cx="10" cy="10" r="4" fill="rgba(255,255,255,0.08)"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ bottom: "35%", left: "4%", animationDelay: "1.3s" }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" style={{ animation: "drift1 5.5s ease-in-out infinite 0.5s" }}>
+              <circle cx="10" cy="10" r="3" fill="rgba(34,197,94,0.18)"/>
+            </svg>
+          </div>
+          <div className="float-el" style={{ bottom: "8%", right: "30%", animationDelay: "0.9s" }}>
+            <svg width="32" height="32" viewBox="0 0 100 100" style={{ animation: "drift2 7s ease-in-out infinite 1s" }}>
+              <polygon points="93,50 71.5,87.2 28.5,87.2 7,50 28.5,12.8 71.5,12.8" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="3"/>
             </svg>
           </div>
 
