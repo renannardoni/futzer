@@ -64,17 +64,19 @@ const COBERTURAS = [
 // ── Arena settings panel ─────────────────────────────────────────────────────
 
 type ArenaForm = {
-  nome: string; descricao: string; rua: string; cidade: string;
-  estado: string; cep: string; lat: string; lng: string; imagemCapa: string;
+  nome: string; descricao: string; telefone: string; precoPorHora: string;
+  rua: string; cidade: string; estado: string; cep: string;
+  lat: string; lng: string; imagemCapa: string; imagens: string[];
 };
 
 function fromArena(a: Quadra): ArenaForm {
   return {
     nome: a.nome, descricao: a.descricao,
+    telefone: a.telefone ?? "", precoPorHora: a.precoPorHora?.toString() ?? "",
     rua: a.endereco.rua, cidade: a.endereco.cidade,
     estado: a.endereco.estado, cep: a.endereco.cep,
     lat: a.coordenadas.lat.toString(), lng: a.coordenadas.lng.toString(),
-    imagemCapa: a.imagemCapa,
+    imagemCapa: a.imagemCapa, imagens: a.imagens ?? [],
   };
 }
 
@@ -83,9 +85,11 @@ function ArenaSettingsPanel({
 }: { arena: Quadra; onSave: (updated: Quadra) => void; onClose: () => void }) {
   const [form, setForm] = useState<ArenaForm>(fromArena(arena));
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [geocoding, setGeocoding] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [geocodeMsg, setGeocodeMsg] = useState<string>("");
+  const [uploadingCapa, setUploadingCapa] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   const set = (f: keyof ArenaForm) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -106,19 +110,31 @@ function ArenaSettingsPanel({
     finally { setGeocoding(false); }
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleCapaUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true);
+    setUploadingCapa(true);
     try { const url = await uploadImage(file); setForm(prev => ({ ...prev, imagemCapa: url })); }
-    finally { setUploading(false); }
+    finally { setUploadingCapa(false); }
+  }
+
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []); if (!files.length) return;
+    setUploadingGallery(true);
+    try {
+      const urls = await Promise.all(files.map(f => uploadImage(f)));
+      setForm(prev => ({ ...prev, imagens: [...prev.imagens, ...urls] }));
+    } finally { setUploadingGallery(false); }
   }
 
   async function handleSave() {
-    setSaving(true);
+    setSaving(true); setSaveError("");
     try {
       const payload = {
         nome: form.nome, descricao: form.descricao || form.nome,
-        imagemCapa: form.imagemCapa || arena.imagemCapa,
+        telefone: form.telefone.trim() || null,
+        precoPorHora: form.precoPorHora ? parseFloat(form.precoPorHora) : null,
+        imagemCapa: form.imagemCapa || "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop",
+        imagens: form.imagens,
         endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
         coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
       };
@@ -126,8 +142,9 @@ function ArenaSettingsPanel({
       const updated = await updateQuadra(arena.id, payload as any);
       onSave(updated);
       onClose();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally { setSaving(false); }
   }
 
   const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
@@ -135,68 +152,136 @@ function ArenaSettingsPanel({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-96 bg-white h-full overflow-y-auto shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+      <div className="w-[440px] bg-white h-full overflow-y-auto shadow-xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b shrink-0">
           <h2 className="font-bold text-gray-900">Configurações da Arena</h2>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
-        <div className="flex-1 p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Nome da Arena</label>
-            <input value={form.nome} onChange={set("nome")} className={inp} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
-            <textarea value={form.descricao} onChange={set("descricao")} rows={2} className={inp + " resize-none"} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Rua</label>
-            <input value={form.rua} onChange={set("rua")} className={inp} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+
+        <div className="flex-1 p-5 space-y-5 overflow-y-auto">
+          {saveError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{saveError}</p>}
+
+          {/* Informações básicas */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Informações</h3>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cidade</label>
-              <input value={form.cidade} onChange={set("cidade")} className={inp} />
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nome da Arena *</label>
+              <input value={form.nome} onChange={set("nome")} placeholder="Arena Premium Sports" className={inp} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Estado</label>
-              <input value={form.estado} onChange={set("estado")} maxLength={2} className={inp} />
+              <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
+              <textarea value={form.descricao} onChange={set("descricao")} rows={3} className={inp + " resize-none"} />
             </div>
-          </div>
-          <button onClick={handleGeocode} disabled={geocoding} className="flex items-center gap-1.5 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg font-medium text-gray-700 disabled:opacity-50">
-            {geocoding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
-            Buscar coordenadas {geocodeMsg && <span className="text-green-600">{geocodeMsg}</span>}
-          </button>
-          <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Telefone</label>
+                <input value={form.telefone} onChange={set("telefone")} placeholder="(11) 99999-9999" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Preço/hora (R$)</label>
+                <input type="number" min="0" step="0.01" value={form.precoPorHora} onChange={set("precoPorHora")} placeholder="Ex: 120.00" className={inp} />
+              </div>
+            </div>
+          </section>
+
+          {/* Endereço */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Endereço</h3>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
-              <input type="number" step="any" value={form.lat} onChange={set("lat")} className={inp} />
+              <label className="block text-xs font-medium text-gray-700 mb-1">Rua / Logradouro</label>
+              <input value={form.rua} onChange={set("rua")} placeholder="Rua das Acácias, 123" className={inp} />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
-              <input type="number" step="any" value={form.lng} onChange={set("lng")} className={inp} />
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cidade</label>
+                <input value={form.cidade} onChange={set("cidade")} placeholder="Campinas" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Estado</label>
+                <input value={form.estado} onChange={set("estado")} placeholder="SP" maxLength={2} className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">CEP</label>
+                <input value={form.cep} onChange={set("cep")} placeholder="13000-000" className={inp} />
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Foto da Arena</label>
+            <button onClick={handleGeocode} disabled={geocoding}
+              className="flex items-center gap-1.5 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg font-medium text-gray-700 disabled:opacity-50">
+              {geocoding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+              Buscar coordenadas
+              {geocodeMsg && <span className="ml-1 text-green-600">{geocodeMsg}</span>}
+            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Latitude</label>
+                <input type="number" step="any" value={form.lat} onChange={set("lat")} placeholder="-22.9064" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Longitude</label>
+                <input type="number" step="any" value={form.lng} onChange={set("lng")} placeholder="-47.0616" className={inp} />
+              </div>
+            </div>
+          </section>
+
+          {/* Foto de capa */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Foto de Capa</h3>
             {form.imagemCapa ? (
-              <div className="relative h-28 rounded-lg overflow-hidden border">
+              <div className="relative h-36 rounded-xl overflow-hidden border border-gray-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={form.imagemCapa} alt="" className="w-full h-full object-cover" />
-                <button onClick={() => setForm(p => ({ ...p, imagemCapa: "" }))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setForm(p => ({ ...p, imagemCapa: "" }))}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             ) : (
-              <label className="flex items-center justify-center h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 transition-colors">
-                <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-                {uploading ? <Loader2 className="w-5 h-5 animate-spin text-green-600" /> : <Upload className="w-5 h-5 text-gray-400" />}
+              <label className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
+                <input type="file" accept="image/*" onChange={handleCapaUpload} className="hidden" />
+                {uploadingCapa
+                  ? <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+                  : <><Upload className="w-6 h-6 text-gray-400 mb-1" /><span className="text-xs text-gray-400">Clique para enviar</span></>}
               </label>
             )}
-          </div>
+          </section>
+
+          {/* Galeria */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Galeria de Fotos</h3>
+              <label className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium cursor-pointer">
+                <input type="file" accept="image/*" multiple onChange={handleGalleryUpload} className="hidden" />
+                {uploadingGallery ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Adicionar fotos
+              </label>
+            </div>
+            {form.imagens.length === 0 ? (
+              <div className="h-16 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center">
+                <p className="text-xs text-gray-400">Nenhuma foto na galeria</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {form.imagens.map((url, i) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setForm(p => ({ ...p, imagens: p.imagens.filter((_, j) => j !== i) }))}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-        <div className="p-5 border-t">
-          <button onClick={handleSave} disabled={saving} className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors">
+
+        <div className="p-5 border-t shrink-0">
+          <button onClick={handleSave} disabled={saving}
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? "Salvando..." : "Salvar"}
+            {saving ? "Salvando..." : "Salvar configurações"}
           </button>
         </div>
       </div>
@@ -321,7 +406,8 @@ function CourtEditPanel({
 // ── New arena form ────────────────────────────────────────────────────────────
 
 const EMPTY_ARENA: ArenaForm = {
-  nome: "", descricao: "", rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "",
+  nome: "", descricao: "", telefone: "", precoPorHora: "",
+  rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "", imagens: [],
 };
 
 function NewArenaPanel({ onCreated, onCancel }: { onCreated: (a: Quadra) => void; onCancel: () => void }) {
@@ -410,6 +496,7 @@ function Dashboard({ user }: { user: User }) {
   const [editingCourtId, setEditingCourtId] = useState<string | null>(null);
   const [isNewArena, setIsNewArena] = useState(false);
   const [addingCourt, setAddingCourt] = useState(false);
+  const [courtError, setCourtError] = useState("");
   const [bookingSlot, setBookingSlot] = useState<number | null>(null);
   const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -460,12 +547,15 @@ function Dashboard({ user }: { user: User }) {
   async function handleAddCourt() {
     if (!selectedArenaId) return;
     setAddingCourt(true);
+    setCourtError("");
     try {
       const count = (selectedArena?.quadrasInternas?.length ?? 0) + 1;
       await addCourt(selectedArenaId, { nome: `Quadra ${count}` });
       const updated = await refreshArena();
       const newCourt = updated?.quadrasInternas?.at(-1);
       if (newCourt) setSelectedCourtId(newCourt.id);
+    } catch (err) {
+      setCourtError(err instanceof Error ? err.message : "Erro ao adicionar quadra");
     } finally { setAddingCourt(false); }
   }
 
@@ -622,6 +712,9 @@ function Dashboard({ user }: { user: User }) {
                 {addingCourt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Quadra
               </button>
+              {courtError && (
+                <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded shrink-0">{courtError}</span>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
