@@ -1,515 +1,806 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { OwnerGuard } from "@/components/owner-guard";
 import { HorariosForm } from "@/components/horarios-form";
 import {
-  getMinhasQuadras,
-  createQuadra,
-  updateQuadra,
-  deleteQuadra,
-  uploadImage,
-  logout,
-  type Quadra,
-  type User,
-  type HorariosSemanais,
+  getMinhasQuadras, createQuadra, updateQuadra, deleteQuadra,
+  uploadImage, logout,
+  addCourt, updateCourt, deleteCourt,
+  addBooking, deleteBooking,
+  getQuadraById,
+  type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
   DEFAULT_HORARIOS_SEMANAIS,
 } from "@/lib/api";
-import { Plus, Trash2, Loader2, Save, Upload, MapPin, LogOut, X } from "lucide-react";
+import {
+  Plus, Trash2, Loader2, Save, Upload, MapPin, LogOut, X,
+  Settings, Edit2, ChevronRight, Phone, User as UserIcon, Check,
+} from "lucide-react";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getDates(count = 21) {
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+const DAY_KEYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MONTH_SHORT = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+
+function getDayKey(iso: string) {
+  return DAY_KEYS[new Date(iso + "T12:00:00").getDay()];
+}
+
+function formatDateLabel(iso: string) {
+  const d = new Date(iso + "T12:00:00");
+  return { dia: DAY_LABELS[d.getDay()], num: d.getDate(), mes: MONTH_SHORT[d.getMonth()] };
+}
 
 const ESPORTES = [
   { value: "futebol", label: "⚽ Futebol Society" },
-  { value: "futsal", label: "🥅 Futsal" },
-  { value: "tenis", label: "🎾 Tênis" },
-  { value: "padel", label: "🏸 Padel" },
+  { value: "futsal",  label: "🥅 Futsal" },
+  { value: "tenis",   label: "🎾 Tênis" },
+  { value: "padel",   label: "🏸 Padel" },
   { value: "beach_tenis", label: "🏖️ Beach Tênis" },
-  { value: "volei", label: "🏐 Vôlei" },
-  { value: "basquete", label: "🏀 Basquete" },
+  { value: "volei",   label: "🏐 Vôlei" },
+  { value: "basquete",label: "🏀 Basquete" },
 ];
 
 const COBERTURAS = [
-  { value: "coberto", label: "Coberto" },
+  { value: "coberto",    label: "Coberto" },
   { value: "descoberto", label: "Descoberto" },
-  { value: "misto", label: "Misto" },
+  { value: "misto",      label: "Misto" },
 ];
 
-type FormData = {
-  nome: string;
-  tipoPiso: string;
-  cobertura: string;
-  precoPorHora: string;
-  descricao: string;
-  rua: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-  lat: string;
-  lng: string;
-  imagemCapa: string;
+// ── Arena settings panel ─────────────────────────────────────────────────────
+
+type ArenaForm = {
+  nome: string; descricao: string; rua: string; cidade: string;
+  estado: string; cep: string; lat: string; lng: string; imagemCapa: string;
 };
 
-const EMPTY_FORM: FormData = {
-  nome: "", tipoPiso: "futebol", cobertura: "descoberto",
-  precoPorHora: "", descricao: "", rua: "", cidade: "", estado: "", cep: "",
-  lat: "", lng: "", imagemCapa: "",
-};
-
-function fromQuadra(q: Quadra): FormData {
+function fromArena(a: Quadra): ArenaForm {
   return {
-    nome: q.nome,
-    tipoPiso: q.tipoPiso,
-    cobertura: q.cobertura ?? "descoberto",
-    precoPorHora: q.precoPorHora?.toString() ?? "",
-    descricao: q.descricao,
-    rua: q.endereco.rua,
-    cidade: q.endereco.cidade,
-    estado: q.endereco.estado,
-    cep: q.endereco.cep,
-    lat: q.coordenadas.lat.toString(),
-    lng: q.coordenadas.lng.toString(),
-    imagemCapa: q.imagemCapa,
+    nome: a.nome, descricao: a.descricao,
+    rua: a.endereco.rua, cidade: a.endereco.cidade,
+    estado: a.endereco.estado, cep: a.endereco.cep,
+    lat: a.coordenadas.lat.toString(), lng: a.coordenadas.lng.toString(),
+    imagemCapa: a.imagemCapa,
   };
 }
 
-function Dashboard({ user }: { user: User }) {
-  const [quadras, setQuadras] = useState<Quadra[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isNew, setIsNew] = useState(false);
-  const [tab, setTab] = useState<"info" | "horarios">("info");
-  const [form, setForm] = useState<FormData>(EMPTY_FORM);
-  const [horarios, setHorarios] = useState<HorariosSemanais>(DEFAULT_HORARIOS_SEMANAIS);
+function ArenaSettingsPanel({
+  arena, onSave, onClose,
+}: { arena: Quadra; onSave: (updated: Quadra) => void; onClose: () => void }) {
+  const [form, setForm] = useState<ArenaForm>(fromArena(arena));
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const [geocodeMsg, setGeocodeMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState<string>("");
 
-  useEffect(() => {
-    getMinhasQuadras()
-      .then(setQuadras)
-      .catch(() => setQuadras([]))
-      .finally(() => setLoadingList(false));
-  }, []);
-
-  const selectedQuadra = quadras.find((q) => q.id === selectedId);
-
-  function selectQuadra(q: Quadra) {
-    setSelectedId(q.id);
-    setIsNew(false);
-    setForm(fromQuadra(q));
-    setHorarios(q.horariosSemanais ?? DEFAULT_HORARIOS_SEMANAIS);
-    setTab("info");
-    setSaveError("");
-    setGeocodeMsg(null);
-  }
-
-  function startNew() {
-    setSelectedId(null);
-    setIsNew(true);
-    setForm(EMPTY_FORM);
-    setHorarios(DEFAULT_HORARIOS_SEMANAIS);
-    setTab("info");
-    setSaveError("");
-    setGeocodeMsg(null);
-  }
-
-  const setField =
-    (field: keyof FormData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  const set = (f: keyof ArenaForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm(prev => ({ ...prev, [f]: e.target.value }));
 
   async function handleGeocode() {
-    const parts = [form.rua, form.cidade, form.estado, "Brasil"].filter(Boolean);
-    if (parts.length < 2) { setGeocodeMsg({ type: "err", text: "Preencha rua e cidade primeiro." }); return; }
-    setGeocoding(true);
-    setGeocodeMsg(null);
+    setGeocoding(true); setGeocodeMsg("");
     try {
-      const q = encodeURIComponent(parts.join(", "));
+      const q = encodeURIComponent([form.rua, form.cidade, form.estado, "Brasil"].join(", "));
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
         headers: { "Accept-Language": "pt-BR" },
       });
       const data = await res.json();
-      if (!data.length) { setGeocodeMsg({ type: "err", text: "Endereço não encontrado." }); return; }
-      setForm((prev) => ({ ...prev, lat: parseFloat(data[0].lat).toFixed(6), lng: parseFloat(data[0].lon).toFixed(6) }));
-      setGeocodeMsg({ type: "ok", text: `✓ ${data[0].display_name.split(",").slice(0, 2).join(",")}` });
-    } catch {
-      setGeocodeMsg({ type: "err", text: "Erro ao buscar coordenadas." });
-    } finally {
-      setGeocoding(false);
-    }
+      if (!data.length) { setGeocodeMsg("Não encontrado"); return; }
+      setForm(prev => ({ ...prev, lat: parseFloat(data[0].lat).toFixed(6), lng: parseFloat(data[0].lon).toFixed(6) }));
+      setGeocodeMsg("✓ Encontrado");
+    } catch { setGeocodeMsg("Erro"); }
+    finally { setGeocoding(false); }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     setUploading(true);
-    try {
-      const url = await uploadImage(file);
-      setForm((prev) => ({ ...prev, imagemCapa: url }));
-    } finally {
-      setUploading(false);
-    }
+    try { const url = await uploadImage(file); setForm(prev => ({ ...prev, imagemCapa: url })); }
+    finally { setUploading(false); }
   }
 
   async function handleSave() {
-    setSaveError("");
-    if (!form.nome.trim()) { setSaveError("Nome é obrigatório."); return; }
-    if (!form.cidade.trim() || !form.estado.trim()) { setSaveError("Cidade e estado são obrigatórios."); return; }
     setSaving(true);
     try {
       const payload = {
-        nome: form.nome,
-        descricao: form.descricao || form.nome,
-        tipoPiso: form.tipoPiso,
-        cobertura: form.cobertura,
-        precoPorHora: form.precoPorHora ? parseFloat(form.precoPorHora) : null,
-        avaliacao: selectedQuadra?.avaliacao ?? 0,
-        imagemCapa: form.imagemCapa || "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop",
-        imagens: selectedQuadra?.imagens ?? [],
-        telefone: null,
+        nome: form.nome, descricao: form.descricao || form.nome,
+        imagemCapa: form.imagemCapa || arena.imagemCapa,
         endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
         coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
-        horariosSemanais: horarios,
       };
-      if (isNew) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const created = await createQuadra(payload as any);
-        setQuadras((prev) => [...prev, created]);
-        setSelectedId(created.id);
-        setIsNew(false);
-      } else if (selectedId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updated = await updateQuadra(selectedId, payload as any);
-        setQuadras((prev) => prev.map((q) => (q.id === selectedId ? updated : q)));
-      }
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Erro ao salvar.");
-    } finally {
-      setSaving(false);
-    }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updated = await updateQuadra(arena.id, payload as any);
+      onSave(updated);
+      onClose();
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  }
+
+  const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/40" onClick={onClose} />
+      <div className="w-96 bg-white h-full overflow-y-auto shadow-xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h2 className="font-bold text-gray-900">Configurações da Arena</h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="flex-1 p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Nome da Arena</label>
+            <input value={form.nome} onChange={set("nome")} className={inp} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Descrição</label>
+            <textarea value={form.descricao} onChange={set("descricao")} rows={2} className={inp + " resize-none"} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Rua</label>
+            <input value={form.rua} onChange={set("rua")} className={inp} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cidade</label>
+              <input value={form.cidade} onChange={set("cidade")} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+              <input value={form.estado} onChange={set("estado")} maxLength={2} className={inp} />
+            </div>
+          </div>
+          <button onClick={handleGeocode} disabled={geocoding} className="flex items-center gap-1.5 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg font-medium text-gray-700 disabled:opacity-50">
+            {geocoding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+            Buscar coordenadas {geocodeMsg && <span className="text-green-600">{geocodeMsg}</span>}
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
+              <input type="number" step="any" value={form.lat} onChange={set("lat")} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
+              <input type="number" step="any" value={form.lng} onChange={set("lng")} className={inp} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Foto da Arena</label>
+            {form.imagemCapa ? (
+              <div className="relative h-28 rounded-lg overflow-hidden border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.imagemCapa} alt="" className="w-full h-full object-cover" />
+                <button onClick={() => setForm(p => ({ ...p, imagemCapa: "" }))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center h-20 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 transition-colors">
+                <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+                {uploading ? <Loader2 className="w-5 h-5 animate-spin text-green-600" /> : <Upload className="w-5 h-5 text-gray-400" />}
+              </label>
+            )}
+          </div>
+        </div>
+        <div className="p-5 border-t">
+          <button onClick={handleSave} disabled={saving} className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Court edit panel (inline, below tabs) ────────────────────────────────────
+
+function CourtEditPanel({
+  court, arenaId,
+  onSave, onDelete, onClose,
+}: {
+  court: SubQuadra; arenaId: string;
+  onSave: (c: SubQuadra) => void; onDelete: () => void; onClose: () => void;
+}) {
+  const [nome, setNome] = useState(court.nome);
+  const [tipoPiso, setTipoPiso] = useState(court.tipoPiso);
+  const [cobertura, setCobertura] = useState(court.cobertura);
+  const [horarios, setHorarios] = useState<HorariosSemanais>(court.horariosSemanais ?? DEFAULT_HORARIOS_SEMANAIS);
+  const [uploading, setUploading] = useState(false);
+  const [imagemCapa, setImagemCapa] = useState(court.imagemCapa ?? "");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true);
+    try { const url = await uploadImage(file); setImagemCapa(url); }
+    finally { setUploading(false); }
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await updateCourt(arenaId, court.id, { nome, tipoPiso, cobertura, imagemCapa: imagemCapa || undefined, horariosSemanais: horarios });
+      onSave({ ...court, nome, tipoPiso, cobertura, imagemCapa: imagemCapa || undefined, horariosSemanais: horarios });
+      onClose();
+    } finally { setSaving(false); }
   }
 
   async function handleDelete() {
-    if (!selectedId || !selectedQuadra) return;
-    if (!confirm(`Excluir "${selectedQuadra.nome}"?`)) return;
+    if (!confirm(`Excluir "${court.nome}"?`)) return;
     setDeleting(true);
-    try {
-      await deleteQuadra(selectedId);
-      setQuadras((prev) => prev.filter((q) => q.id !== selectedId));
-      setSelectedId(null);
-      setIsNew(false);
-    } finally {
-      setDeleting(false);
-    }
+    try { await deleteCourt(arenaId, court.id); onDelete(); onClose(); }
+    finally { setDeleting(false); }
   }
 
-  const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+  const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+
+  return (
+    <div className="border border-green-200 bg-green-50 rounded-xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-800">Editar Quadra</h3>
+        <button onClick={onClose}><X className="w-4 h-4 text-gray-400" /></button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Nome</label>
+          <input value={nome} onChange={e => setNome(e.target.value)} className={inp} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Esporte</label>
+          <select value={tipoPiso} onChange={e => setTipoPiso(e.target.value)} className={inp}>
+            {ESPORTES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Estrutura</label>
+        <div className="flex gap-2">
+          {COBERTURAS.map(c => (
+            <button key={c.value} type="button" onClick={() => setCobertura(c.value)}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${cobertura === c.value ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-600 border-gray-300"}`}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Foto da Quadra</label>
+        {imagemCapa ? (
+          <div className="relative h-24 rounded-lg overflow-hidden border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imagemCapa} alt="" className="w-full h-full object-cover" />
+            <button onClick={() => setImagemCapa("")} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
+          </div>
+        ) : (
+          <label className="flex items-center justify-center h-16 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-400 transition-colors">
+            <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin text-green-600" /> : <Upload className="w-4 h-4 text-gray-400" />}
+          </label>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-2">Horários disponíveis</label>
+        <div className="bg-white rounded-lg p-3 border border-gray-200">
+          <HorariosForm horariosSemanais={horarios} onChange={setHorarios} />
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar
+        </button>
+        <button onClick={handleDelete} disabled={deleting}
+          className="flex items-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          Excluir
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── New arena form ────────────────────────────────────────────────────────────
+
+const EMPTY_ARENA: ArenaForm = {
+  nome: "", descricao: "", rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "",
+};
+
+function NewArenaPanel({ onCreated, onCancel }: { onCreated: (a: Quadra) => void; onCancel: () => void }) {
+  const [form, setForm] = useState<ArenaForm>(EMPTY_ARENA);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (f: keyof ArenaForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm(prev => ({ ...prev, [f]: e.target.value }));
+
+  const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+
+  async function handleSave() {
+    if (!form.nome.trim()) { setError("Nome obrigatório"); return; }
+    if (!form.cidade.trim() || !form.estado.trim()) { setError("Cidade e estado obrigatórios"); return; }
+    setSaving(true); setError("");
+    try {
+      const payload = {
+        nome: form.nome, descricao: form.descricao || form.nome,
+        tipoPiso: "futebol", avaliacao: 0,
+        imagemCapa: form.imagemCapa || "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop",
+        imagens: [],
+        endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
+        coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const created = await createQuadra(payload as any);
+      onCreated(created);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao criar arena");
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Nova Arena</h1>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="text-sm text-gray-500 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50">Cancelar</button>
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Criar Arena
+          </button>
+        </div>
+      </div>
+      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-4">{error}</p>}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Nome da Arena *</label>
+          <input value={form.nome} onChange={set("nome")} placeholder="Ex: Arena Premium Sports" className={inp} />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cidade *</label>
+            <input value={form.cidade} onChange={set("cidade")} placeholder="Campinas" className={inp} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Estado *</label>
+            <input value={form.estado} onChange={set("estado")} placeholder="SP" maxLength={2} className={inp} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">CEP</label>
+            <input value={form.cep} onChange={set("cep")} placeholder="13000-000" className={inp} />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Rua / Logradouro</label>
+          <input value={form.rua} onChange={set("rua")} placeholder="Rua das Acácias, 123" className={inp} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
+
+function Dashboard({ user }: { user: User }) {
+  const [arenas, setArenas] = useState<Quadra[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selectedArenaId, setSelectedArenaId] = useState<string | null>(null);
+  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO());
+  const [showSettings, setShowSettings] = useState(false);
+  const [editingCourtId, setEditingCourtId] = useState<string | null>(null);
+  const [isNewArena, setIsNewArena] = useState(false);
+  const [addingCourt, setAddingCourt] = useState(false);
+  const [bookingSlot, setBookingSlot] = useState<number | null>(null);
+  const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
+  const dateRowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getMinhasQuadras()
+      .then(data => {
+        setArenas(data);
+        if (data.length > 0 && !selectedArenaId) {
+          setSelectedArenaId(data[0].id);
+          if (data[0].quadrasInternas?.length) setSelectedCourtId(data[0].quadrasInternas[0].id);
+        }
+      })
+      .catch(() => setArenas([]))
+      .finally(() => setLoadingList(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dates = getDates(21);
+  const selectedArena = arenas.find(a => a.id === selectedArenaId);
+  const courts = selectedArena?.quadrasInternas ?? [];
+  const selectedCourt = courts.find(c => c.id === selectedCourtId);
+
+  const dayKey = getDayKey(selectedDate);
+  const availableSlots = selectedCourt?.horariosSemanais?.[dayKey]?.slots ?? [];
+  const bookingsForDay = (selectedArena?.reservas ?? []).filter(
+    r => r.quadra_id === selectedCourtId && r.data === selectedDate
+  );
+
+  function selectArena(a: Quadra) {
+    setSelectedArenaId(a.id);
+    setIsNewArena(false);
+    setEditingCourtId(null);
+    setBookingSlot(null);
+    const firstCourt = a.quadrasInternas?.[0];
+    setSelectedCourtId(firstCourt?.id ?? null);
+  }
+
+  async function refreshArena() {
+    if (!selectedArenaId) return;
+    const updated = await getQuadraById(selectedArenaId);
+    setArenas(prev => prev.map(a => a.id === selectedArenaId ? updated : a));
+    return updated;
+  }
+
+  async function handleAddCourt() {
+    if (!selectedArenaId) return;
+    setAddingCourt(true);
+    try {
+      const count = (selectedArena?.quadrasInternas?.length ?? 0) + 1;
+      await addCourt(selectedArenaId, { nome: `Quadra ${count}` });
+      const updated = await refreshArena();
+      const newCourt = updated?.quadrasInternas?.at(-1);
+      if (newCourt) setSelectedCourtId(newCourt.id);
+    } finally { setAddingCourt(false); }
+  }
+
+  async function handleAddBooking() {
+    if (!selectedArenaId || !selectedCourtId || bookingSlot === null || !bookingForm.nome.trim()) return;
+    setBookingLoading(true);
+    try {
+      await addBooking(selectedArenaId, {
+        quadra_id: selectedCourtId,
+        data: selectedDate,
+        hora: bookingSlot,
+        nome_cliente: bookingForm.nome.trim(),
+        telefone: bookingForm.tel.trim() || undefined,
+      });
+      await refreshArena();
+      setBookingSlot(null);
+      setBookingForm({ nome: "", tel: "" });
+    } finally { setBookingLoading(false); }
+  }
+
+  async function handleDeleteBooking(bookingId: string) {
+    if (!selectedArenaId) return;
+    setDeletingBookingId(bookingId);
+    try {
+      await deleteBooking(selectedArenaId, bookingId);
+      await refreshArena();
+    } finally { setDeletingBookingId(null); }
+  }
+
+  async function handleDeleteArena() {
+    if (!selectedArena || !confirm(`Excluir arena "${selectedArena.nome}"?`)) return;
+    await deleteQuadra(selectedArena.id);
+    const remaining = arenas.filter(a => a.id !== selectedArena.id);
+    setArenas(remaining);
+    setSelectedArenaId(remaining[0]?.id ?? null);
+    setSelectedCourtId(remaining[0]?.quadrasInternas?.[0]?.id ?? null);
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Left sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      {/* ── Left sidebar: arenas ── */}
+      <aside className="w-52 bg-white border-r border-gray-200 flex flex-col shrink-0">
         <div className="p-4 border-b border-gray-100">
           <Link href="/" className="text-lg font-black tracking-widest text-green-600">FUTZER</Link>
           <p className="text-xs text-gray-500 mt-0.5 truncate">{user.nome}</p>
         </div>
 
-        <div className="p-3">
+        <div className="p-2.5">
           <button
-            onClick={startNew}
-            className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-3 py-2.5 rounded-lg transition-colors"
+            onClick={() => { setIsNewArena(true); setSelectedArenaId(null); }}
+            className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            Nova Quadra
+            <Plus className="w-4 h-4" /> Nova Arena
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-2">
+        <div className="flex-1 overflow-y-auto px-2">
           {loadingList ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
-            </div>
-          ) : quadras.length === 0 && !isNew ? (
-            <p className="text-xs text-gray-400 text-center py-6 px-3">
-              Clique em &ldquo;Nova Quadra&rdquo; para começar
-            </p>
+            <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 text-green-600 animate-spin" /></div>
           ) : (
-            <div className="space-y-1">
-              {quadras.map((q) => {
-                const esporte = ESPORTES.find((e) => e.value === q.tipoPiso);
-                const isSelected = selectedId === q.id;
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => selectQuadra(q)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors border ${
-                      isSelected
-                        ? "bg-green-50 border-green-200"
-                        : "hover:bg-gray-50 border-transparent"
-                    }`}
-                  >
-                    <p className={`text-sm font-medium truncate ${isSelected ? "text-green-800" : "text-gray-800"}`}>
-                      {q.nome}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {esporte?.label.replace(/^\S+\s/, "") ?? q.tipoPiso}
-                      {q.cobertura ? ` · ${q.cobertura}` : ""}
-                    </p>
-                  </button>
-                );
-              })}
-              {isNew && (
-                <div className="px-3 py-2.5 rounded-lg bg-green-50 border border-green-200">
-                  <p className="text-sm font-medium text-green-700 italic">Nova quadra...</p>
+            <div className="space-y-0.5">
+              {arenas.map(a => (
+                <button key={a.id} onClick={() => selectArena(a)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${selectedArenaId === a.id && !isNewArena ? "bg-green-50 text-green-800" : "hover:bg-gray-50 text-gray-700"}`}>
+                  <p className="text-sm font-medium truncate">{a.nome}</p>
+                  <p className="text-xs text-gray-400">{a.endereco?.cidade}, {a.endereco?.estado}</p>
+                </button>
+              ))}
+              {isNewArena && (
+                <div className="px-3 py-2.5 rounded-lg bg-green-50">
+                  <p className="text-sm font-medium text-green-700 italic">Nova arena...</p>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="p-3 border-t border-gray-100">
+        <div className="p-2.5 border-t border-gray-100">
           <button
             onClick={() => { logout(); window.location.href = "/owner/login"; }}
             className="w-full flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
           >
-            <LogOut className="w-4 h-4" />
-            Sair
+            <LogOut className="w-4 h-4" /> Sair
           </button>
         </div>
       </aside>
 
-      {/* Right panel */}
-      <main className="flex-1 overflow-y-auto">
-        {!isNew && !selectedId ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 text-2xl">⚽</div>
-            <h2 className="text-lg font-semibold text-gray-700 mb-1">Selecione uma quadra</h2>
-            <p className="text-sm text-gray-400 mb-6">Escolha na lista ou crie uma nova</p>
-            <button
-              onClick={startNew}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Quadra
+      {/* ── Main panel ── */}
+      <main className="flex-1 overflow-y-auto flex flex-col">
+        {isNewArena ? (
+          <NewArenaPanel
+            onCreated={a => { setArenas(prev => [...prev, a]); selectArena(a); setIsNewArena(false); }}
+            onCancel={() => { setIsNewArena(false); }}
+          />
+        ) : !selectedArena ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mb-3 text-2xl">⚽</div>
+            <h2 className="text-lg font-semibold text-gray-700 mb-1">Selecione uma Arena</h2>
+            <p className="text-sm text-gray-400 mb-5">ou crie uma nova na lista ao lado</p>
+            <button onClick={() => setIsNewArena(true)}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
+              <Plus className="w-4 h-4" /> Nova Arena
             </button>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-xl font-bold text-gray-900">
-                {isNew ? "Nova Quadra" : selectedQuadra?.nome}
-              </h1>
-              <div className="flex items-center gap-2">
-                {!isNew && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-600 border border-gray-200 hover:border-red-200 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    Excluir
-                  </button>
-                )}
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {saving ? "Salvando..." : "Salvar"}
+          <>
+            {/* Arena header */}
+            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">{selectedArena.nome}</h1>
+                <p className="text-xs text-gray-400">{selectedArena.endereco?.cidade}, {selectedArena.endereco?.estado}</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors">
+                  <Settings className="w-4 h-4" /> Configurar
+                </button>
+                <button onClick={handleDeleteArena}
+                  className="text-sm text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors">
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {saveError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-4">{saveError}</p>
-            )}
-
-            {/* Tabs */}
-            <div className="flex gap-1 border-b border-gray-200 mb-6">
-              {(["info", "horarios"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                    tab === t
-                      ? "border-green-600 text-green-700"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {t === "info" ? "Informações" : "Horários"}
-                </button>
+            {/* Courts tabs */}
+            <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
+              {courts.map(c => (
+                <div key={c.id} className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => { setSelectedCourtId(c.id); setEditingCourtId(null); setBookingSlot(null); }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${selectedCourtId === c.id ? "bg-green-100 text-green-800" : "hover:bg-gray-100 text-gray-600"}`}
+                  >
+                    {c.imagemCapa ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.imagemCapa} alt="" className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <span className="w-5 h-5 rounded-full bg-green-200 flex items-center justify-center text-xs">⚽</span>
+                    )}
+                    {c.nome}
+                  </button>
+                  <button
+                    onClick={() => setEditingCourtId(editingCourtId === c.id ? null : c.id)}
+                    className={`p-1 rounded transition-colors ${editingCourtId === c.id ? "text-green-600" : "text-gray-300 hover:text-gray-500"}`}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ))}
+              <button
+                onClick={handleAddCourt}
+                disabled={addingCourt}
+                className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+              >
+                {addingCourt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Quadra
+              </button>
             </div>
 
-            {tab === "info" ? (
-              <div className="space-y-5">
-                {/* Dados */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800">Dados da Quadra</h3>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Court edit panel */}
+              {editingCourtId && (() => {
+                const c = courts.find(c => c.id === editingCourtId);
+                return c ? (
+                  <CourtEditPanel
+                    key={c.id} court={c} arenaId={selectedArena.id}
+                    onSave={() => { refreshArena(); }}
+                    onDelete={() => { refreshArena(); setSelectedCourtId(null); }}
+                    onClose={() => setEditingCourtId(null)}
+                  />
+                ) : null;
+              })()}
+
+              {/* No courts yet */}
+              {courts.length === 0 && (
+                <div className="bg-white border-2 border-dashed border-gray-200 rounded-xl p-10 text-center">
+                  <p className="text-gray-400 mb-3">Nenhuma quadra cadastrada ainda</p>
+                  <button onClick={handleAddCourt} disabled={addingCourt}
+                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+                    {addingCourt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Adicionar Quadra
+                  </button>
+                </div>
+              )}
+
+              {/* Calendar + slots */}
+              {selectedCourt && (
+                <>
+                  {/* Date picker */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
-                    <input
-                      value={form.nome}
-                      onChange={setField("nome")}
-                      placeholder="Ex: Quadra 1 — Arena Premium"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Esporte *</label>
-                      <select value={form.tipoPiso} onChange={setField("tipoPiso")} className={inputCls}>
-                        {ESPORTES.map((e) => (
-                          <option key={e.value} value={e.value}>{e.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Estrutura</label>
-                      <div className="flex gap-1.5">
-                        {COBERTURAS.map((c) => (
-                          <button
-                            key={c.value}
-                            type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, cobertura: c.value }))}
-                            className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                              form.cobertura === c.value
+                    <div ref={dateRowRef} className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      {dates.map(iso => {
+                        const { dia, num, mes } = formatDateLabel(iso);
+                        const isToday = iso === todayISO();
+                        const isSel = iso === selectedDate;
+                        return (
+                          <button key={iso} onClick={() => { setSelectedDate(iso); setBookingSlot(null); }}
+                            className={`shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all border ${
+                              isSel
                                 ? "bg-green-600 text-white border-green-600"
-                                : "bg-white text-gray-600 border-gray-300 hover:border-green-400"
+                                : isToday
+                                ? "border-green-300 text-green-700 bg-green-50"
+                                : "border-gray-200 text-gray-600 hover:border-green-300 bg-white"
                             }`}
                           >
-                            {c.label}
+                            <span className="text-xs font-medium">{dia}</span>
+                            <span className="text-lg font-bold leading-none">{num}</span>
+                            <span className="text-xs opacity-70">{mes}</span>
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Preço por hora (R$)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        value={form.precoPorHora}
-                        onChange={setField("precoPorHora")}
-                        placeholder="Ex: 120.00"
-                        className={inputCls}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                    <textarea
-                      value={form.descricao}
-                      onChange={setField("descricao")}
-                      rows={2}
-                      placeholder="Breve descrição (opcional)"
-                      className={inputCls + " resize-none"}
-                    />
-                  </div>
-                </div>
 
-                {/* Endereço */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800">Endereço</h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Rua / Logradouro</label>
-                    <input value={form.rua} onChange={setField("rua")} placeholder="Rua das Acácias, 123" className={inputCls} />
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
-                      <input value={form.cidade} onChange={setField("cidade")} placeholder="Campinas" className={inputCls} />
+                  {/* Slots */}
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-800">{selectedCourt.nome}</h3>
+                        <p className="text-xs text-gray-400">
+                          {formatDateLabel(selectedDate).dia}, {formatDateLabel(selectedDate).num}/{formatDateLabel(selectedDate).mes}
+                        </p>
+                      </div>
+                      {selectedCourt.imagemCapa && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={selectedCourt.imagemCapa} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                      )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
-                      <input value={form.estado} onChange={setField("estado")} placeholder="SP" maxLength={2} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                      <input value={form.cep} onChange={setField("cep")} placeholder="13000-000" className={inputCls} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleGeocode}
-                      disabled={geocoding}
-                      className="flex items-center gap-1.5 text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-medium px-3 py-2 rounded-lg transition-colors"
-                    >
-                      {geocoding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
-                      Buscar coordenadas
-                    </button>
-                    {geocodeMsg && (
-                      <span className={`text-xs ${geocodeMsg.type === "ok" ? "text-green-600" : "text-red-500"}`}>
-                        {geocodeMsg.text}
-                      </span>
+
+                    {availableSlots.length === 0 ? (
+                      <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-gray-400">Nenhum horário configurado para esse dia.</p>
+                        <button onClick={() => setEditingCourtId(selectedCourt.id)}
+                          className="mt-2 text-xs text-green-600 hover:underline">
+                          Configurar horários →
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {availableSlots.map(hora => {
+                          const booking = bookingsForDay.find(b => b.hora === hora);
+                          const isBookingThis = bookingSlot === hora;
+
+                          return (
+                            <div key={hora} className={`px-5 py-3 flex items-center gap-4 ${booking ? "bg-amber-50" : ""}`}>
+                              {/* Time */}
+                              <span className="text-sm font-mono font-semibold text-gray-500 w-12 shrink-0">
+                                {String(hora).padStart(2, "0")}:00
+                              </span>
+
+                              {/* Content */}
+                              <div className="flex-1">
+                                {booking ? (
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5 text-sm text-gray-800 font-medium">
+                                      <UserIcon className="w-4 h-4 text-amber-500" />
+                                      {booking.nome_cliente}
+                                    </div>
+                                    {booking.telefone && (
+                                      <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                                        <Phone className="w-3.5 h-3.5" />
+                                        {booking.telefone}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isBookingThis ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      autoFocus
+                                      placeholder="Nome do cliente"
+                                      value={bookingForm.nome}
+                                      onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
+                                      className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                      onKeyDown={e => e.key === "Enter" && handleAddBooking()}
+                                    />
+                                    <input
+                                      placeholder="Telefone"
+                                      value={bookingForm.tel}
+                                      onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
+                                      className="w-32 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                      onKeyDown={e => e.key === "Enter" && handleAddBooking()}
+                                    />
+                                    <button onClick={handleAddBooking} disabled={bookingLoading}
+                                      className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-60">
+                                      {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                    </button>
+                                    <button onClick={() => { setBookingSlot(null); setBookingForm({ nome: "", tel: "" }); }}
+                                      className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600">
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-300">──────</span>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              {booking ? (
+                                <button
+                                  onClick={() => handleDeleteBooking(booking.id)}
+                                  disabled={deletingBookingId === booking.id}
+                                  className="shrink-0 p-1.5 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                                >
+                                  {deletingBookingId === booking.id
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <X className="w-4 h-4" />}
+                                </button>
+                              ) : !isBookingThis ? (
+                                <button
+                                  onClick={() => { setBookingSlot(hora); setBookingForm({ nome: "", tel: "" }); }}
+                                  className="shrink-0 flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium"
+                                >
+                                  <Plus className="w-3.5 h-3.5" /> Reservar
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-                      <input type="number" step="any" value={form.lat} onChange={setField("lat")} placeholder="-22.9064" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-                      <input type="number" step="any" value={form.lng} onChange={setField("lng")} placeholder="-47.0616" className={inputCls} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Foto */}
-                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-                  <h3 className="text-sm font-semibold text-gray-800">Foto da Quadra</h3>
-                  {form.imagemCapa ? (
-                    <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={form.imagemCapa} alt="Capa" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, imagemCapa: "" }))}
-                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-400 hover:bg-green-50 transition-all">
-                      <input type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-                      {uploading ? (
-                        <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
-                      ) : (
-                        <>
-                          <Upload className="w-6 h-6 text-gray-400 mb-2" />
-                          <span className="text-sm text-gray-400">Clique para enviar foto</span>
-                        </>
-                      )}
-                    </label>
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Horários tab */
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
-                <h3 className="text-sm font-semibold text-gray-800 mb-1">Horários disponíveis</h3>
-                <p className="text-xs text-gray-500 mb-5">
-                  Selecione as janelas de 1 hora disponíveis para reserva (06h–23h).
-                </p>
-                <HorariosForm
-                  horariosSemanais={horarios}
-                  onChange={(h) => setHorarios(h)}
-                />
-              </div>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </main>
+
+      {/* Settings panel */}
+      {showSettings && selectedArena && (
+        <ArenaSettingsPanel
+          arena={selectedArena}
+          onSave={updated => setArenas(prev => prev.map(a => a.id === updated.id ? updated : a))}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

@@ -73,6 +73,24 @@ export const DEFAULT_HORARIOS_SEMANAIS: HorariosSemanais = {
   dom: { slots: [] },
 };
 
+export interface SubQuadra {
+  id: string;
+  nome: string;
+  tipoPiso: string;
+  cobertura: string;
+  imagemCapa?: string;
+  horariosSemanais: HorariosSemanais;
+}
+
+export interface Reserva {
+  id: string;
+  quadra_id: string;
+  data: string;   // "2026-03-08"
+  hora: number;   // 9
+  nome_cliente: string;
+  telefone?: string;
+}
+
 export interface Quadra {
   id: string;
   nome: string;
@@ -90,6 +108,8 @@ export interface Quadra {
   owner_id?: string;
   horariosSemanais?: HorariosSemanais;
   datasBloqueadas?: string[];
+  quadrasInternas?: SubQuadra[];
+  reservas?: Reserva[];
   created_at?: string;
   updated_at?: string;
 }
@@ -347,4 +367,58 @@ export async function resetPassword(token: string, new_password: string): Promis
 
 export function logout() {
   removeToken();
+}
+
+// ── Sub-courts ────────────────────────────────────────────────────────────────
+
+export async function addCourt(arenaId: string, data: Partial<SubQuadra>): Promise<SubQuadra> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/courts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro');
+  return res.json();
+}
+
+export async function updateCourt(arenaId: string, courtId: string, data: Partial<SubQuadra>): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/courts/${courtId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro');
+}
+
+export async function deleteCourt(arenaId: string, courtId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/courts/${courtId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Erro ao excluir quadra');
+}
+
+// ── Bookings ─────────────────────────────────────────────────────────────────
+
+export async function addBooking(arenaId: string, booking: Omit<Reserva, 'id'>): Promise<Reserva> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(booking),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro');
+  return res.json();
+}
+
+export async function deleteBooking(arenaId: string, bookingId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/${bookingId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Erro ao excluir reserva');
 }
