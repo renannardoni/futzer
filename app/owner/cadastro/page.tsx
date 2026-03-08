@@ -10,6 +10,7 @@ export default function OwnerCadastroPage() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [emailExists, setEmailExists] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,7 @@ export default function OwnerCadastroPage() {
     e.preventDefault();
     setError("");
     setEmailExists(false);
+    if (password !== confirm) { setError("As senhas não coincidem"); return; }
     setLoading(true);
     try {
       await registerUser(nome, email, password);
@@ -78,6 +80,17 @@ export default function OwnerCadastroPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar senha</label>
+              <input
+                type="password"
+                required
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Repita a senha"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>

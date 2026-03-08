@@ -48,10 +48,7 @@ export interface Coordenadas {
 }
 
 export interface HorarioDia {
-  aberto: boolean;
-  inicio: string;
-  fim: string;
-  intervalo: number;
+  slots: number[];  // horas disponíveis ex: [8, 9, 14, 15]
 }
 
 export interface HorariosSemanais {
@@ -64,16 +61,16 @@ export interface HorariosSemanais {
   dom: HorarioDia;
 }
 
-export const DEFAULT_HORARIO_DIA: HorarioDia = { aberto: true, inicio: "08:00", fim: "22:00", intervalo: 60 };
+export const DEFAULT_HORARIO_DIA: HorarioDia = { slots: [] };
 
 export const DEFAULT_HORARIOS_SEMANAIS: HorariosSemanais = {
-  seg: { ...DEFAULT_HORARIO_DIA },
-  ter: { ...DEFAULT_HORARIO_DIA },
-  qua: { ...DEFAULT_HORARIO_DIA },
-  qui: { ...DEFAULT_HORARIO_DIA },
-  sex: { ...DEFAULT_HORARIO_DIA },
-  sab: { ...DEFAULT_HORARIO_DIA },
-  dom: { aberto: false, inicio: "08:00", fim: "18:00", intervalo: 60 },
+  seg: { slots: [] },
+  ter: { slots: [] },
+  qua: { slots: [] },
+  qui: { slots: [] },
+  sex: { slots: [] },
+  sab: { slots: [] },
+  dom: { slots: [] },
 };
 
 export interface Quadra {
@@ -84,6 +81,7 @@ export interface Quadra {
   coordenadas: Coordenadas;
   precoPorHora?: number | null;
   tipoPiso: string;
+  cobertura?: string;
   modalidade?: string;
   imagemCapa: string;
   imagens?: string[];

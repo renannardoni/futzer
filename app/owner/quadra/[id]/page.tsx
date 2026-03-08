@@ -116,7 +116,7 @@ function EditarQuadraContent({ user }: { user: User }) {
               <HorariosForm
                 horariosSemanais={horarios}
                 datasBloqueadas={datas}
-                onChange={(h, d) => { setHorarios(h); setDatas(d); }}
+                onChange={(h) => setHorarios(h)}
               />
 
               <div className="flex items-center gap-4 mt-8 pt-6 border-t border-gray-100">
