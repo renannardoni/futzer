@@ -323,6 +323,30 @@ export async function deleteQuadra(id: string): Promise<void> {
   }
 }
 
+export async function forgotPassword(email: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Erro ao enviar email');
+  }
+}
+
+export async function resetPassword(token: string, new_password: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Erro ao redefinir senha');
+  }
+}
+
 export function logout() {
   removeToken();
 }

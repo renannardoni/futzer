@@ -65,6 +65,12 @@ export default function OwnerLoginPage() {
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
             )}
 
+            <div className="flex justify-end">
+              <Link href="/owner/forgot-password" className="text-xs text-gray-500 hover:text-green-600">
+                Esqueci a senha
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
