@@ -80,6 +80,8 @@ export function Header({
 
             </div>
           </div>
+
+          <ThemeToggle />
         </div>
 
         {/* Mobile: duas linhas */}
