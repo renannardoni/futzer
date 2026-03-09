@@ -106,6 +106,7 @@ export interface Quadra {
   avaliacao: number;
   telefone?: string | null;
   owner_id?: string;
+  ativo?: boolean;
   horariosSemanais?: HorariosSemanais;
   datasBloqueadas?: string[];
   quadrasInternas?: SubQuadra[];
@@ -240,12 +241,14 @@ export async function getQuadras(filters?: {
   tipo?: string;
   cidade?: string;
   preco_max?: number;
+  include_inativos?: boolean;
 }): Promise<Quadra[]> {
   const params = new URLSearchParams();
-  
+
   if (filters?.tipo) params.append('tipo_piso', filters.tipo);
   if (filters?.cidade) params.append('cidade', filters.cidade);
   if (filters?.preco_max) params.append('preco_max', filters.preco_max.toString());
+  if (filters?.include_inativos) params.append('include_inativos', 'true');
 
   const url = `${API_URL}/quadras/${params.toString() ? '?' + params.toString() : ''}`;
   
@@ -369,6 +372,19 @@ export async function deleteQuadra(id: string): Promise<void> {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail || 'Erro ao deletar quadra');
   }
+}
+
+export async function toggleQuadraAtivo(id: string): Promise<{ ativo: boolean }> {
+  const token = getAdminToken() || getToken();
+  const response = await fetch(`${API_URL}/quadras/${id}/toggle-ativo`, {
+    method: 'PATCH',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Erro ao alterar status');
+  }
+  return response.json();
 }
 
 export async function forgotPassword(email: string): Promise<void> {

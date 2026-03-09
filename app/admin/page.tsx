@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getQuadras, deleteQuadra, removeAdminToken, type Quadra } from '@/lib/api';
-import { Plus, Pencil, Trash2, MapPin, Star, RefreshCw, LogOut } from 'lucide-react';
+import { getQuadras, deleteQuadra, toggleQuadraAtivo, removeAdminToken, type Quadra } from '@/lib/api';
+import { Plus, Pencil, Trash2, MapPin, Star, RefreshCw, LogOut, Eye, EyeOff } from 'lucide-react';
 import { AdminGuard } from '@/components/admin-guard';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
@@ -19,13 +19,14 @@ export default function AdminPage() {
   const [quadras, setQuadras] = useState<Quadra[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadQuadras = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getQuadras();
+      const data = await getQuadras({ include_inativos: true });
       setQuadras(data);
     } catch {
       setError('Erro ao carregar quadras. Verifique se a API está rodando.');
@@ -46,6 +47,18 @@ export default function AdminPage() {
       alert(err instanceof Error ? err.message : 'Erro ao excluir quadra');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleToggleAtivo = async (id: string) => {
+    setTogglingId(id);
+    try {
+      const { ativo } = await toggleQuadraAtivo(id);
+      setQuadras(prev => prev.map(q => q.id === id ? { ...q, ativo } : q));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao alterar status');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -157,7 +170,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {quadras.map((quadra) => (
-                      <tr key={quadra.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={quadra.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${quadra.ativo === false ? 'opacity-50' : ''}`}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
@@ -202,6 +215,19 @@ export default function AdminPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleAtivo(quadra.id)}
+                              disabled={togglingId === quadra.id}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border ${
+                                quadra.ativo === false
+                                  ? 'text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                  : 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/30'
+                              }`}
+                              title={quadra.ativo === false ? 'Ativar quadra' : 'Desativar quadra'}
+                            >
+                              {quadra.ativo === false ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              {quadra.ativo === false ? 'Inativa' : 'Ativa'}
+                            </button>
                             <Link
                               href={`/admin/quadras/${quadra.id}/editar`}
                               className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
