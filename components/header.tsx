@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const CITIES = [
   { value: "sao-paulo", label: "São Paulo",  short: "SP" },
@@ -98,6 +99,7 @@ export function Header({
                 {CITIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
+            <ThemeToggle />
           </div>
 
           {/* Linha 2: busca + filtros */}
