@@ -8,7 +8,7 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
 const MAP_ID = "7d48a8d3e0d52541babf3db1";
 
 function createPinHtml(tipoPiso: string | undefined, isActive: boolean, isDark: boolean = false) {
-  const bg = isActive ? '#6AB945' : (isDark ? '#e5e7eb' : '#2d2d2d');
+  const bg = isActive ? '#6AB945' : '#2d2d2d';
   const w = isActive ? 30 : 24;
   const h = isActive ? 40 : 32;
   const r = isActive ? 15 : 12;
@@ -59,7 +59,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
       <MapClickHandler onMapClick={handleMapClick} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
-          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
+          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', ...(isDark ? { filter: 'invert(90%) hue-rotate(180deg)' } : {}) }} />
         </AdvancedMarker>
       )}
       {courts.map((court) => {
@@ -70,7 +70,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
             position={{ lat: court.coordenadas.lat, lng: court.coordenadas.lng }}
             onClick={(e) => { e.stop(); onCourtClick?.(court); }}
           >
-            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive, isDark) }} />
+            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive, isDark) }} style={isDark ? { filter: "invert(90%) hue-rotate(180deg)" } : undefined} />
           </AdvancedMarker>
         );
       })}
