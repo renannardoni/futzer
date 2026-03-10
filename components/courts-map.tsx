@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { Court } from "@/types/court";
 
@@ -37,9 +37,10 @@ interface CourtsMapProps {
   userLat?: number | null;
   userLng?: number | null;
   cityCenter?: [number, number];
+  isDark?: boolean;
 }
 
-function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter }: CourtsMapProps) {
+function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter, isDark }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
 
   const defaultCenter = userLat != null && userLng != null
@@ -58,7 +59,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
       <MapClickHandler onMapClick={handleMapClick} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
-          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
+          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', ...(isDark ? { filter: "invert(90%) hue-rotate(180deg)" } : {}) }} />
         </AdvancedMarker>
       )}
       {courts.map((court) => {
@@ -69,7 +70,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
             position={{ lat: court.coordenadas.lat, lng: court.coordenadas.lng }}
             onClick={(e) => { e.stop(); onCourtClick?.(court); }}
           >
-            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive) }} />
+            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive) }} style={isDark ? { filter: "invert(90%) hue-rotate(180deg)" } : undefined} />
           </AdvancedMarker>
         );
       })}
@@ -78,10 +79,26 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
 }
 
 export function CourtsMap(props: CourtsMapProps) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const check = () => setIsDark(root.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-      <div className="h-full w-full">
-        <MapInner {...props} />
+      <div className="h-full w-full relative">
+        <div
+          className="h-full w-full"
+          style={isDark ? { filter: "invert(90%) hue-rotate(180deg) brightness(0.85) contrast(0.9)" } : undefined}
+        >
+          <MapInner {...props} isDark={isDark} />
+        </div>
       </div>
     </APIProvider>
   );
