@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getQuadraById, type Quadra } from "@/lib/api";
@@ -212,6 +212,7 @@ function Gallery({ images, onOpenLightbox }: GalleryProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function QuadraPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [quadra, setQuadra] = useState<Quadra | null>(null);
   const [loading, setLoading] = useState(true);
@@ -259,12 +260,12 @@ export default function QuadraPage() {
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10">
           <div className="container mx-auto px-4 py-4">
-            <Link href="/" className="inline-flex items-center text-[#6AB945] hover:text-[#5aa835]">
+            <button onClick={() => router.back()} className="inline-flex items-center text-[#6AB945] hover:text-[#5aa835]">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Voltar para busca
-            </Link>
+              Voltar
+            </button>
           </div>
         </header>
 
