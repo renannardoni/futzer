@@ -117,7 +117,7 @@ function QuadrasContent() {
             {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em {cityLabel}
             {userLat != null && <span className="ml-1 text-[#6AB945]">· ordenadas por proximidade</span>}
           </p>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredCourts.map((court) => (
               <CourtCard
                 key={court.id}
@@ -218,7 +218,7 @@ function QuadrasContent() {
       </div>
 
       {/* ── DESKTOP layout ─────────────────────────────────── */}
-      <main className="hidden lg:grid lg:grid-cols-[1fr_0.8fr] h-[calc(100vh-96px)]">
+      <main className="hidden lg:grid lg:grid-cols-[1.2fr_0.6fr] h-[calc(100vh-96px)]">
         <div className="overflow-y-auto px-6 py-6 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>
