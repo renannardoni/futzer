@@ -43,11 +43,11 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
   return (
     <Link href={`/quadras/${court.id}`}>
       <Card
-        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700 max-w-sm"
+        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700 max-w-xs"
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
-        <div className="relative h-36 w-full">
+        <div className="relative h-28 w-full">
           <Image
             src={getImageSrc(court.imagemCapa)}
             alt={court.nome}
