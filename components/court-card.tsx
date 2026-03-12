@@ -43,7 +43,7 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
   return (
     <Link href={`/quadras/${court.id}`}>
       <Card
-        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700 max-w-xs"
+        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700"
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
