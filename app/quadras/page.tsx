@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -54,6 +54,8 @@ function QuadrasContent() {
   const [loading, setLoading] = useState(true);
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLng, setUserLng] = useState<number | null>(null);
+  const [mapCenterLat, setMapCenterLat] = useState<number | null>(null);
+  const [mapCenterLng, setMapCenterLng] = useState<number | null>(null);
 
   useEffect(() => {
     getQuadras()
@@ -75,6 +77,11 @@ function QuadrasContent() {
     });
   }, []);
 
+  const handleMapCenterChanged = useCallback((lat: number, lng: number) => {
+    setMapCenterLat(lat);
+    setMapCenterLng(lng);
+  }, []);
+
   const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["campinas"];
   const cityLabel = CITIES.find(c => c.value === selectedCity)?.label ?? "Campinas";
 
@@ -87,16 +94,16 @@ function QuadrasContent() {
       return matchesSearch && matchesType && matchesCity;
     });
 
-    // Ordenar por proximidade: do usuário (se disponível) ou do centro da cidade
-    const refLat = userLat ?? cityConfig.center[0];
-    const refLng = userLng ?? cityConfig.center[1];
+    // Ordenar por proximidade: centro do mapa > localização do usuário > centro da cidade
+    const refLat = mapCenterLat ?? userLat ?? cityConfig.center[0];
+    const refLng = mapCenterLng ?? userLng ?? cityConfig.center[1];
     list = [...list].sort((a, b) =>
       haversineKm(refLat, refLng, a.coordenadas.lat, a.coordenadas.lng) -
       haversineKm(refLat, refLng, b.coordenadas.lat, b.coordenadas.lng)
     );
 
     return list;
-  }, [courts, searchTerm, selectedType, selectedCity, userLat, userLng, cityConfig]);
+  }, [courts, searchTerm, selectedType, selectedCity, userLat, userLng, mapCenterLat, mapCenterLng, cityConfig]);
 
   const courtList = (
     <>
@@ -116,7 +123,7 @@ function QuadrasContent() {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground dark:text-gray-400">
             {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em {cityLabel}
-            <span className="ml-1 text-[#6AB945]">· {userLat != null ? "por proximidade" : "mais próximas do centro"}</span>
+            <span className="ml-1 text-[#6AB945]">· {mapCenterLat != null ? "por proximidade do mapa" : userLat != null ? "por proximidade" : "mais próximas do centro"}</span>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {filteredCourts.map((court) => (
@@ -156,6 +163,7 @@ function QuadrasContent() {
             courts={filteredCourts}
             selectedCourtId={selectedCourt?.id}
             onCourtClick={setSelectedCourt}
+            onCenterChanged={handleMapCenterChanged}
             userLat={userLat}
             userLng={userLng}
             cityCenter={cityConfig.center}
@@ -229,6 +237,7 @@ function QuadrasContent() {
             hoveredCourtId={hoveredCourtId}
             selectedCourtId={selectedCourt?.id}
             onCourtClick={setSelectedCourt}
+            onCenterChanged={handleMapCenterChanged}
             userLat={userLat}
             userLng={userLng}
             cityCenter={cityConfig.center}

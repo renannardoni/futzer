@@ -29,18 +29,32 @@ function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
   return null;
 }
 
+function MapCenterWatcher({ onCenterChanged }: { onCenterChanged?: (lat: number, lng: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !onCenterChanged) return;
+    const listener = map.addListener('idle', () => {
+      const center = map.getCenter();
+      if (center) onCenterChanged(center.lat(), center.lng());
+    });
+    return () => listener.remove();
+  }, [map, onCenterChanged]);
+  return null;
+}
+
 interface CourtsMapProps {
   courts: Court[];
   hoveredCourtId?: string | null;
   selectedCourtId?: string | null;
   onCourtClick?: (court: Court | null) => void;
+  onCenterChanged?: (lat: number, lng: number) => void;
   userLat?: number | null;
   userLng?: number | null;
   cityCenter?: [number, number];
   isDark?: boolean;
 }
 
-function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userLat, userLng, cityCenter, isDark }: CourtsMapProps) {
+function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCenterChanged, userLat, userLng, cityCenter, isDark }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
 
   const defaultCenter = userLat != null && userLng != null
@@ -57,6 +71,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, userL
       style={{ height: "100%", width: "100%" }}
     >
       <MapClickHandler onMapClick={handleMapClick} />
+      <MapCenterWatcher onCenterChanged={onCenterChanged} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
           <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', ...(isDark ? { filter: 'invert(90%) hue-rotate(180deg)' } : {}) }} />
