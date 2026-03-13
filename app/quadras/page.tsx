@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -77,9 +77,13 @@ function QuadrasContent() {
     });
   }, []);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const handleMapCenterChanged = useCallback((lat: number, lng: number) => {
-    setMapCenterLat(lat);
-    setMapCenterLng(lng);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setMapCenterLat(lat);
+      setMapCenterLng(lng);
+    }, 300);
   }, []);
 
   const cityConfig = CITY_CONFIG[selectedCity] ?? CITY_CONFIG["campinas"];
