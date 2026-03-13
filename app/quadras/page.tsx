@@ -87,12 +87,13 @@ function QuadrasContent() {
       return matchesSearch && matchesType && matchesCity;
     });
 
-    if (userLat != null && userLng != null) {
-      list = [...list].sort((a, b) =>
-        haversineKm(userLat, userLng, a.coordenadas.lat, a.coordenadas.lng) -
-        haversineKm(userLat, userLng, b.coordenadas.lat, b.coordenadas.lng)
-      );
-    }
+    // Ordenar por proximidade: do usuário (se disponível) ou do centro da cidade
+    const refLat = userLat ?? cityConfig.center[0];
+    const refLng = userLng ?? cityConfig.center[1];
+    list = [...list].sort((a, b) =>
+      haversineKm(refLat, refLng, a.coordenadas.lat, a.coordenadas.lng) -
+      haversineKm(refLat, refLng, b.coordenadas.lat, b.coordenadas.lng)
+    );
 
     return list;
   }, [courts, searchTerm, selectedType, selectedCity, userLat, userLng, cityConfig]);
@@ -115,7 +116,7 @@ function QuadrasContent() {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground dark:text-gray-400">
             {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em {cityLabel}
-            {userLat != null && <span className="ml-1 text-[#6AB945]">· ordenadas por proximidade</span>}
+            <span className="ml-1 text-[#6AB945]">· {userLat != null ? "por proximidade" : "mais próximas do centro"}</span>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {filteredCourts.map((court) => (
