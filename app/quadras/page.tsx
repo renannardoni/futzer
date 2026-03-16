@@ -77,7 +77,7 @@ function QuadrasContent() {
     });
   }, []);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleMapCenterChanged = useCallback((lat: number, lng: number) => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
