@@ -19,7 +19,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 
   if (!checked) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#6AB945]"></div>
       </div>
     );

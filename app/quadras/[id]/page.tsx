@@ -11,7 +11,7 @@ import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, 
 
 const QuadraMap = dynamic(
   () => import('@/components/quadra-map').then(m => m.QuadraMap),
-  { ssr: false, loading: () => <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6AB945]" /></div> }
+  { ssr: false, loading: () => <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#6AB945]" /></div> }
 );
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=600&fit=crop";
@@ -106,7 +106,7 @@ function ShowAllButton({ total, onClick }: { total: number; onClick: (e: React.M
   return (
     <button
       onClick={onClick}
-      className="absolute bottom-4 right-4 flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all border border-gray-200 dark:border-gray-600 z-10"
+      className="absolute bottom-4 right-4 flex items-center gap-2 bg-white text-gray-800 text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all border border-gray-200 z-10"
     >
       <Grid2X2 className="w-4 h-4" />
       Mostrar todas as fotos ({total})
@@ -228,10 +228,10 @@ export default function QuadraPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Carregando quadra...</p>
+          <p className="mt-4 text-gray-600">Carregando quadra...</p>
         </div>
       </div>
     );
@@ -239,9 +239,9 @@ export default function QuadraPage() {
 
   if (notFoundState || !quadra) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold dark:text-white mb-4">Quadra não encontrada</h1>
+          <h1 className="text-2xl font-bold mb-4">Quadra não encontrada</h1>
           <Link href="/quadras" className="text-[#6AB945] hover:underline">Voltar para a busca</Link>
         </div>
       </div>
@@ -256,9 +256,9 @@ export default function QuadraPage() {
         <Lightbox images={allImages} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
       )}
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10">
+        <header className="bg-white border-b sticky top-0 z-10">
           <div className="container mx-auto px-4 py-4">
             <Link href="/quadras" className="inline-flex items-center text-[#6AB945] hover:text-[#5aa835]">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,11 +272,11 @@ export default function QuadraPage() {
         <div className="container mx-auto px-4 py-8">
           {/* Title row */}
           <div className="mb-4">
-            <h1 className="text-3xl font-bold dark:text-white">{quadra.nome}</h1>
-            <div className="flex items-center gap-3 mt-1 text-gray-600 dark:text-gray-400 flex-wrap">
+            <h1 className="text-3xl font-bold">{quadra.nome}</h1>
+            <div className="flex items-center gap-3 mt-1 text-gray-600 flex-wrap">
               <span className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-semibold text-gray-800 dark:text-white">{quadra.avaliacao}</span>
+                <span className="font-semibold text-gray-800">{quadra.avaliacao}</span>
               </span>
               <span>·</span>
               <span className="flex items-center gap-1">
@@ -294,19 +294,19 @@ export default function QuadraPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main content */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-                <h2 className="text-xl font-semibold mb-4 dark:text-white">Sobre esta quadra</h2>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{quadra.descricao}</p>
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-semibold mb-4">Sobre esta quadra</h2>
+                <p className="text-gray-700 leading-relaxed">{quadra.descricao}</p>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-                <h2 className="text-xl font-semibold mb-4 dark:text-white">Informações</h2>
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-semibold mb-4">Informações</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-start">
                     <Users className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
                     <div>
-                      <p className="font-medium dark:text-white">Esporte</p>
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <p className="font-medium">Esporte</p>
+                      <p className="text-gray-600">
                         {quadra.tipoPiso === 'futebol' ? '⚽ Futebol'
                           : quadra.tipoPiso === 'tenis' ? '🎾 Tênis'
                           : quadra.tipoPiso === 'areia' ? '🏖️ Areia'
@@ -317,19 +317,19 @@ export default function QuadraPage() {
                   <div className="flex items-start">
                     <Clock className="w-5 h-5 mr-3 mt-0.5 text-[#6AB945]" />
                     <div>
-                      <p className="font-medium dark:text-white">Localização</p>
-                      <p className="text-gray-600 dark:text-gray-400">{quadra.endereco.cidade}, {quadra.endereco.estado}</p>
+                      <p className="font-medium">Localização</p>
+                      <p className="text-gray-600">{quadra.endereco.cidade}, {quadra.endereco.estado}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700">
-                <h2 className="text-xl font-semibold mb-4 dark:text-white">Localização</h2>
+              <div className="bg-white rounded-lg p-6 border">
+                <h2 className="text-xl font-semibold mb-4">Localização</h2>
                 <div className="h-64 rounded-lg overflow-hidden">
                   <QuadraMap lat={quadra.coordenadas.lat} lng={quadra.coordenadas.lng} nome={quadra.nome} />
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 flex items-center gap-1">
+                <p className="text-sm text-gray-500 mt-3 flex items-center gap-1">
                   <MapPin className="w-4 h-4 flex-shrink-0" />
                   {quadra.endereco.rua}, {quadra.endereco.cidade} — {quadra.endereco.estado}{quadra.endereco.cep ? `, ${quadra.endereco.cep}` : ''}
                 </p>
@@ -338,7 +338,7 @@ export default function QuadraPage() {
 
             {/* Sidebar - reserva */}
             <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border dark:border-gray-700 sticky top-24">
+              <div className="bg-white rounded-lg p-6 border sticky top-24">
 
                 {/* Price + phone — always visible */}
                 <div className="mb-6">
@@ -346,11 +346,11 @@ export default function QuadraPage() {
                     {quadra.modalidade === 'publica' ? (
                       <span className="text-2xl font-bold text-[#6AB945]">Gratuita</span>
                     ) : quadra.modalidade === 'clube' ? (
-                      <span className="text-2xl font-bold text-gray-700 dark:text-gray-200">Sócio</span>
+                      <span className="text-2xl font-bold text-gray-700">Sócio</span>
                     ) : quadra.precoPorHora != null ? (
-                      <><span className="text-3xl font-bold dark:text-white">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 dark:text-gray-400 ml-2">/hora</span></>
+                      <><span className="text-3xl font-bold">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 ml-2">/hora</span></>
                     ) : (
-                      <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">Consulte o preço</span>
+                      <span className="text-xl font-semibold text-gray-500">Consulte o preço</span>
                     )}
                   </div>
                   {quadra.telefone && (
@@ -367,7 +367,7 @@ export default function QuadraPage() {
 
                       {/* 10-day calendar strip */}
                       <div>
-                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
+                        <label className="block text-sm font-medium mb-2">Data</label>
                         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                           {Array.from({ length: 10 }, (_, i) => {
                             const d = new Date();
@@ -380,7 +380,7 @@ export default function QuadraPage() {
                                 className={`flex-shrink-0 flex flex-col items-center px-2 py-2 rounded-lg border text-xs w-[2.6rem] ${
                                   isSelected
                                     ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                                    : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800'
+                                    : 'border-gray-200 text-gray-700 bg-white'
                                 }`}
                               >
                                 <span className="font-medium">{DAY_NAMES[d.getDay()]}</span>
@@ -393,7 +393,7 @@ export default function QuadraPage() {
 
                       {/* Court selector */}
                       <div>
-                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Quadra</label>
+                        <label className="block text-sm font-medium mb-2">Quadra</label>
                         <div className="flex gap-2 flex-wrap">
                           {['Quadra 1', 'Quadra 2'].map((q, i) => (
                             <button
@@ -401,7 +401,7 @@ export default function QuadraPage() {
                               className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${
                                 i === 0
                                   ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                                  : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800'
+                                  : 'border-gray-200 text-gray-600 bg-white'
                               }`}
                             >
                               {q}
@@ -412,12 +412,12 @@ export default function QuadraPage() {
 
                       {/* Time slots */}
                       <div>
-                        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Horários disponíveis — Quadra 1</label>
+                        <label className="block text-sm font-medium mb-2">Horários disponíveis — Quadra 1</label>
                         <div className="grid grid-cols-3 gap-1.5">
                           {['07:00','08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'].map((t) => (
                             <button
                               key={t}
-                              className="py-1.5 rounded-md border border-gray-200 dark:border-gray-600 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800"
+                              className="py-1.5 rounded-md border border-gray-200 text-xs text-gray-700 bg-white"
                             >
                               {t}
                             </button>
@@ -434,19 +434,19 @@ export default function QuadraPage() {
                       <Lock className="w-5 h-5" />
                       Reservar quadra
                     </button>
-                    <p className="text-center text-sm text-gray-400 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
+                    <p className="text-center text-sm text-gray-400 mt-3 flex items-center justify-center gap-1">
                       <Lock className="w-3.5 h-3.5" />
                       Serviço bloqueado
                     </p>
 
-                    <div className="mt-6 pt-6 border-t dark:border-gray-700">
+                    <div className="mt-6 pt-6 border-t">
                       <div className="flex justify-between mb-2 opacity-50">
-                        <span className="text-gray-600 dark:text-gray-400">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
-                        <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                        <span className="text-gray-600">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
+                        <span>{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-lg mt-4 opacity-50">
-                        <span className="dark:text-white">Total</span>
-                        <span className="dark:text-white">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                        <span>Total</span>
+                        <span>{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
                       </div>
                     </div>
                   </>
@@ -454,14 +454,14 @@ export default function QuadraPage() {
 
                 {/* PÚBLICA */}
                 {quadra.modalidade === 'publica' && (
-                  <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 text-sm text-green-800 dark:text-green-300">
+                  <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800">
                     🏟️ Esta é uma quadra pública de acesso gratuito. Entre em contato ou visite o local para mais informações.
                   </div>
                 )}
 
                 {/* CLUBE */}
                 {quadra.modalidade === 'clube' && (
-                  <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 text-sm text-blue-800 dark:text-blue-300">
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
                     🏅 Esta quadra é de uso exclusivo para sócios. Entre em contato com o clube para informações sobre associação.
                   </div>
                 )}

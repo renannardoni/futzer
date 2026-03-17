@@ -207,22 +207,22 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
     }
   };
 
-  const inputCls = "w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#6AB945] focus:border-transparent text-sm";
-  const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+  const inputCls = "w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#6AB945] focus:border-transparent text-sm";
+  const labelCls = "block text-sm font-medium text-gray-700 mb-1";
 
   const previewUrl = form.imagemCapa && !form.imagemCapa.includes('example.com') && !form.imagemCapa.includes('placeholder.com')
     ? form.imagemCapa
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 shadow-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+            <Link href="/admin" className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <h1 className="text-lg font-bold text-gray-800 dark:text-white">
+            <h1 className="text-lg font-bold text-gray-800">
               {mode === 'criar' ? 'Nova Quadra' : `Editar: ${quadra?.nome}`}
             </h1>
           </div>
@@ -240,15 +240,15 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
             {error}
           </div>
         )}
 
         <form id="quadra-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Informações básicas */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Informações Básicas</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-base font-semibold text-gray-800 mb-4">Informações Básicas</h2>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>Nome da Quadra *</label>
@@ -282,7 +282,7 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
                         type="button"
                         onClick={() => setForm(prev => ({ ...prev, mostrarPreco: !prev.mostrarPreco, precoPorHora: '' }))}
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-                          form.mostrarPreco ? 'bg-[#6AB945]' : 'bg-gray-300 dark:bg-gray-600'
+                          form.mostrarPreco ? 'bg-[#6AB945]' : 'bg-gray-300'
                         }`}
                         title={form.mostrarPreco ? 'Desativar preço' : 'Ativar preço'}
                       >
@@ -322,15 +322,15 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
           </div>
 
           {/* Foto de Capa */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-white">Foto de Capa</h2>
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+              <h2 className="text-base font-semibold text-gray-800">Foto de Capa</h2>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                 <button
                   type="button"
                   onClick={() => setUrlMode(false)}
                   className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
-                    !urlMode ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    !urlMode ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -340,7 +340,7 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
                   type="button"
                   onClick={() => setUrlMode(true)}
                   className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
-                    urlMode ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    urlMode ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
@@ -369,21 +369,21 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
                       onDrop={handleDrop}
                       className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
                         dragOver
-                          ? 'border-[#6AB945] bg-green-50 dark:bg-green-900/20'
-                          : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 hover:border-[#6AB945] hover:bg-green-50 dark:hover:bg-green-900/10'
+                          ? 'border-[#6AB945] bg-green-50'
+                          : 'border-gray-300 bg-gray-50 hover:border-[#6AB945] hover:bg-green-50'
                       }`}
                     >
                       {uploading ? (
                         <>
                           <Loader2 className="w-8 h-8 text-[#6AB945] animate-spin mb-2" />
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Enviando...</p>
+                          <p className="text-sm text-gray-500">Enviando...</p>
                         </>
                       ) : (
                         <>
-                          <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mb-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
                             <Upload className="w-5 h-5 text-[#6AB945]" />
                           </div>
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Arraste ou clique para enviar</p>
+                          <p className="text-sm font-medium text-gray-700">Arraste ou clique para enviar</p>
                           <p className="text-xs text-gray-400 mt-1">JPEG, PNG ou WebP — máx. 5MB</p>
                         </>
                       )}
@@ -410,7 +410,7 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
               {/* Right: preview */}
               <div>
                 <p className={labelCls}>Preview</p>
-                <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700">
+                <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
                   {previewUrl ? (
                     <>
                       <Image
@@ -442,11 +442,11 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
           </div>
 
           {/* Galeria de Fotos */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-800 dark:text-white">Galeria de Fotos</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Adicione mais fotos para exibir na página da quadra (opcional)</p>
+                <h2 className="text-base font-semibold text-gray-800">Galeria de Fotos</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Adicione mais fotos para exibir na página da quadra (opcional)</p>
               </div>
               <div>
                 <input
@@ -476,13 +476,13 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
             )}
 
             {form.imagens.length === 0 ? (
-              <div className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl h-24 flex items-center justify-center">
-                <p className="text-sm text-gray-400 dark:text-gray-500">Nenhuma foto na galeria</p>
+              <div className="border-2 border-dashed border-gray-200 rounded-xl h-24 flex items-center justify-center">
+                <p className="text-sm text-gray-400">Nenhuma foto na galeria</p>
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {form.imagens.map((url, i) => (
-                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
                     <Image
                       src={url}
                       alt={`Foto ${i + 1}`}
@@ -509,8 +509,8 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
           </div>
 
           {/* Endereço */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Endereço</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-base font-semibold text-gray-800 mb-4">Endereço</h2>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>Rua / Logradouro *</label>
@@ -534,11 +534,11 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
           </div>
 
           {/* Coordenadas */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start justify-between mb-1">
               <div>
-                <h2 className="text-base font-semibold text-gray-800 dark:text-white">Coordenadas (para o mapa)</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <h2 className="text-base font-semibold text-gray-800">Coordenadas (para o mapa)</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
                   Preencha o endereço acima e clique em{' '}
                   <span className="font-medium text-[#6AB945]">Buscar automaticamente</span>, ou insira manualmente via{' '}
                   <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="text-[#6AB945] hover:underline">Google Maps</a>
@@ -558,8 +558,8 @@ export function QuadraForm({ quadra, mode, redirectTo = '/admin' }: QuadraFormPr
             {geocodeMsg && (
               <p className={`text-xs mt-2 mb-3 px-3 py-2 rounded-lg ${
                 geocodeMsg.type === 'ok'
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-red-50 text-red-600'
               }`}>
                 {geocodeMsg.text}
               </p>

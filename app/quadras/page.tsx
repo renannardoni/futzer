@@ -125,7 +125,7 @@ function QuadrasContent() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             {filteredCourts.length} {filteredCourts.length === 1 ? "quadra" : "quadras"} em {cityLabel}
             <span className="ml-1 text-[#6AB945]">· {mapCenterLat != null ? "por proximidade do mapa" : userLat != null ? "por proximidade" : "mais próximas do centro"}</span>
           </p>
@@ -148,7 +148,7 @@ function QuadrasContent() {
 
   return (
     <div
-      className="min-h-screen dark:bg-gray-900"
+      className="min-h-screen"
       style={{ backgroundColor: pageBg, transition: "background-color 0.5s ease" }}
     >
       <Header
@@ -174,7 +174,7 @@ function QuadrasContent() {
           />
 
           {selectedCourt && (
-            <div className="absolute bottom-4 left-3 right-3 z-[1000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex">
+            <div className="absolute bottom-4 left-3 right-3 z-[1000] bg-white rounded-2xl shadow-2xl overflow-hidden flex">
               <div className="relative w-28 shrink-0">
                 <Image
                   src={getImg(selectedCourt.imagemCapa)}
@@ -186,27 +186,27 @@ function QuadrasContent() {
                 />
               </div>
               <div className="flex-1 p-3 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{selectedCourt.nome}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                <p className="text-sm font-semibold text-gray-900 truncate">{selectedCourt.nome}</p>
+                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 truncate">
                   <MapPin className="w-3 h-3 shrink-0" />{selectedCourt.endereco.rua}
                 </p>
                 <div className="flex items-center justify-between mt-2">
                   <div>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                    <span className="text-sm font-bold text-gray-900">
                       {selectedCourt.precoPorHora != null ? `R$ ${selectedCourt.precoPorHora.toFixed(0)}` : 'Consulte'}
                     </span>
                     {selectedCourt.precoPorHora != null && <span className="text-xs text-gray-400">/hora</span>}
                   </div>
                   <div className="flex items-center gap-0.5">
                     <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{selectedCourt.avaliacao}</span>
+                    <span className="text-xs font-medium text-gray-700">{selectedCourt.avaliacao}</span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col justify-between items-end p-2">
                 <button
                   onClick={() => setSelectedCourt(null)}
-                  className="p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300"
+                  className="p-1 rounded-full bg-gray-100 text-gray-500"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -221,18 +221,18 @@ function QuadrasContent() {
           )}
         </div>
 
-        <div className="flex justify-center py-2 dark:bg-gray-900" style={{ backgroundColor: pageBg, transition: "background-color 0.5s ease" }}>
-          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+        <div className="flex justify-center py-2" style={{ backgroundColor: pageBg, transition: "background-color 0.5s ease" }}>
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
         </div>
 
-        <div className="px-4 pb-8 pt-2 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
+        <div className="px-4 pb-8 pt-2" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>
       </div>
 
       {/* ── DESKTOP layout ─────────────────────────────────── */}
       <main className="hidden lg:grid lg:grid-cols-[3fr_2fr] h-[calc(100vh-96px)]">
-        <div className="overflow-y-auto px-6 py-6 dark:bg-gray-900" style={{ transition: "background-color 0.5s ease" }}>
+        <div className="overflow-y-auto px-6 py-6" style={{ transition: "background-color 0.5s ease" }}>
           {courtList}
         </div>
         <div className="relative h-full sticky top-0">
@@ -248,7 +248,7 @@ function QuadrasContent() {
           />
 
           {selectedCourt && (
-            <div className="absolute bottom-5 left-4 right-4 z-[1000] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex">
+            <div className="absolute bottom-5 left-4 right-4 z-[1000] bg-white rounded-2xl shadow-2xl overflow-hidden flex">
               <div className="relative w-32 shrink-0">
                 <Image
                   src={getImg(selectedCourt.imagemCapa)}
@@ -260,27 +260,27 @@ function QuadrasContent() {
                 />
               </div>
               <div className="flex-1 p-4 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{selectedCourt.nome}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1 truncate">
+                <p className="text-sm font-semibold text-gray-900 truncate">{selectedCourt.nome}</p>
+                <p className="text-xs text-gray-500 flex items-center gap-1 mt-1 truncate">
                   <MapPin className="w-3 h-3 shrink-0" />{selectedCourt.endereco.rua}
                 </p>
                 <div className="flex items-center justify-between mt-3">
                   <div>
-                    <span className="text-base font-bold text-gray-900 dark:text-white">
+                    <span className="text-base font-bold text-gray-900">
                       {selectedCourt.precoPorHora != null ? `R$ ${selectedCourt.precoPorHora.toFixed(0)}` : 'Consulte'}
                     </span>
                     {selectedCourt.precoPorHora != null && <span className="text-xs text-gray-400">/hora</span>}
                   </div>
                   <div className="flex items-center gap-0.5">
                     <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{selectedCourt.avaliacao}</span>
+                    <span className="text-sm font-medium text-gray-700">{selectedCourt.avaliacao}</span>
                   </div>
                 </div>
               </div>
               <div className="flex flex-col justify-between items-end p-3">
                 <button
                   onClick={() => setSelectedCourt(null)}
-                  className="p-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
