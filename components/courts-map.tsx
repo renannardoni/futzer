@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { APIProvider, Map, useMap, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { Court } from "@/types/court";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
 const MAP_ID = "7d48a8d3e0d52541babf3db1";
 
-function createPinHtml(tipoPiso: string | undefined, isActive: boolean, isDark: boolean = false) {
+function createPinHtml(tipoPiso: string | undefined, isActive: boolean) {
   const bg = isActive ? '#6AB945' : '#2d2d2d';
   const w = isActive ? 30 : 24;
   const h = isActive ? 40 : 32;
@@ -39,10 +39,9 @@ interface CourtsMapProps {
   userLat?: number | null;
   userLng?: number | null;
   cityCenter?: [number, number];
-  isDark?: boolean;
 }
 
-function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCenterChanged, userLat, userLng, cityCenter, isDark }: CourtsMapProps) {
+function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCenterChanged, userLat, userLng, cityCenter }: CourtsMapProps) {
   const handleMapClick = useCallback(() => onCourtClick?.(null), [onCourtClick]);
   const handleCameraChanged = useCallback((ev: { detail: { center: { lat: number; lng: number } } }) => {
     onCenterChanged?.(ev.detail.center.lat, ev.detail.center.lng);
@@ -65,7 +64,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCen
       <MapClickHandler onMapClick={handleMapClick} />
       {userLat != null && userLng != null && (
         <AdvancedMarker position={{ lat: userLat, lng: userLng }}>
-          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', ...(isDark ? { filter: 'invert(90%) hue-rotate(180deg)' } : {}) }} />
+          <div style={{ width:20, height:20, borderRadius:'50%', background:'#4285F4', border:'3px solid #fff', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
         </AdvancedMarker>
       )}
       {courts.map((court) => {
@@ -76,7 +75,7 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCen
             position={{ lat: court.coordenadas.lat, lng: court.coordenadas.lng }}
             onClick={(e) => { e.stop(); onCourtClick?.(court); }}
           >
-            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive, isDark) }} style={isDark ? { filter: "invert(90%) hue-rotate(180deg)" } : undefined} />
+            <div dangerouslySetInnerHTML={{ __html: createPinHtml(court.tipoPiso, isActive) }} />
           </AdvancedMarker>
         );
       })}
@@ -85,25 +84,11 @@ function MapInner({ courts, hoveredCourtId, selectedCourtId, onCourtClick, onCen
 }
 
 export function CourtsMap(props: CourtsMapProps) {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const check = () => setIsDark(root.classList.contains("dark"));
-    check();
-    const observer = new MutationObserver(check);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
       <div className="h-full w-full relative">
-        <div
-          className="h-full w-full"
-          style={isDark ? { filter: "invert(90%) hue-rotate(180deg) brightness(0.85) contrast(0.9)" } : undefined}
-        >
-          <MapInner {...props} isDark={isDark} />
+        <div className="h-full w-full">
+          <MapInner {...props} />
         </div>
       </div>
     </APIProvider>

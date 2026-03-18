@@ -43,7 +43,7 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
   return (
     <Link href={`/quadras/${court.id}`}>
       <Card
-        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700"
+        className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
@@ -57,42 +57,42 @@ export function CourtCard({ court, onMouseEnter, onMouseLeave }: CourtCardProps)
           />
           {/* Badges empilhados no canto superior direito */}
           <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-            <Badge className="bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-white dark:hover:bg-gray-800">
+            <Badge className="bg-white text-black hover:bg-white">
               {courtTypeLabels[court.tipoPiso] ?? court.tipoPiso}
             </Badge>
             {court.modalidade && (
-              <Badge className="bg-white dark:bg-gray-800 text-black dark:text-white hover:bg-white dark:hover:bg-gray-800">
+              <Badge className="bg-white text-black hover:bg-white">
                 {modalidadeLabels[court.modalidade] ?? court.modalidade}
               </Badge>
             )}
           </div>
         </div>
-        <CardContent className="p-3 dark:bg-gray-800">
+        <CardContent className="p-3">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-sm line-clamp-1 dark:text-white">{court.nome}</h3>
+            <h3 className="font-semibold text-sm line-clamp-1">{court.nome}</h3>
             <div className="flex items-center gap-1 shrink-0">
               <Star className="h-4 w-4 fill-current text-yellow-500" />
-              <span className="text-sm font-medium dark:text-gray-200">{court.avaliacao}</span>
+              <span className="text-sm font-medium">{court.avaliacao}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground dark:text-gray-400 mb-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
             <MapPin className="h-4 w-4" />
             <span className="line-clamp-1">{court.endereco.rua}</span>
           </div>
           <div className="flex items-end justify-between gap-2">
-            <div className="text-base font-semibold dark:text-white">
+            <div className="text-base font-semibold">
               {showPrice ? (
                 court.precoPorHora != null
-                  ? <>{"R$ "}{court.precoPorHora.toFixed(0)}<span className="text-sm font-normal text-muted-foreground dark:text-gray-400">/hora</span></>
-                  : <span className="text-sm font-normal text-muted-foreground dark:text-gray-400">R$ -,--<span className="ml-0.5">/hora</span></span>
+                  ? <>{"R$ "}{court.precoPorHora.toFixed(0)}<span className="text-sm font-normal text-muted-foreground">/hora</span></>
+                  : <span className="text-sm font-normal text-muted-foreground">R$ -,--<span className="ml-0.5">/hora</span></span>
               ) : (
-                <span className="text-sm font-normal text-muted-foreground dark:text-gray-400">
+                <span className="text-sm font-normal text-muted-foreground">
                   {court.modalidade === "publica" ? "Gratuita" : court.modalidade === "clube" ? "Sócio" : ""}
                 </span>
               )}
             </div>
             {court.telefone && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground dark:text-gray-400">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Phone className="h-3.5 w-3.5" />
                 <span>{court.telefone}</span>
               </div>

@@ -33,7 +33,7 @@ export function CompactSearch({
           <select 
             value={selectedType} 
             onChange={(e) => onTypeChange(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
+            className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#6AB945] focus:border-transparent"
           >
             <option value="todos">Todos os esportes</option>
             <option value="futebol">⚽ Futebol</option>
