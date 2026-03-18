@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DEV_PASSWORD = "2406";
+const DEV_PASSWORD = "240695";
 const COOKIE_NAME = "dev_access";
 
 export function middleware(request: NextRequest) {

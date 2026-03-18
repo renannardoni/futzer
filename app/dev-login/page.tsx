@@ -13,8 +13,8 @@ function LoginForm() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password === "2406") {
-      document.cookie = `dev_access=2406; path=/; max-age=${60 * 60 * 24 * 30}`;
+    if (password === "240695") {
+      document.cookie = `dev_access=240695; path=/`;
       router.push(redirect);
     } else {
       setError(true);
