@@ -89,6 +89,8 @@ export interface Reserva {
   hora: number;   // 9
   nome_cliente: string;
   telefone?: string;
+  recorrencia?: string | null;          // "semanal" | "quinzenal" | "mensal"
+  recorrencia_grupo_id?: string | null; // UUID para agrupar reservas recorrentes
 }
 
 export interface Quadra {
@@ -467,4 +469,35 @@ export async function deleteBooking(arenaId: string, bookingId: string): Promise
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) throw new Error('Erro ao excluir reserva');
+}
+
+export interface RecurrentBookingPayload {
+  quadra_id: string;
+  hora: number;
+  nome_cliente: string;
+  telefone?: string;
+  recorrencia: 'semanal' | 'quinzenal' | 'mensal';
+  data_inicio: string; // "2026-03-22"
+}
+
+export async function addRecurrentBooking(
+  arenaId: string, data: RecurrentBookingPayload
+): Promise<{ grupo_id: string; count: number; bookings: Reserva[] }> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/recurrent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro ao criar recorrência');
+  return res.json();
+}
+
+export async function deleteBookingGroup(arenaId: string, grupoId: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/group/${grupoId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Erro ao excluir grupo de reservas');
 }

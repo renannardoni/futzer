@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OwnerGuard } from "@/components/owner-guard";
 import { HorariosForm } from "@/components/horarios-form";
@@ -8,28 +8,21 @@ import {
   getMinhasQuadras, createQuadra, updateQuadra, deleteQuadra,
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
-  addBooking, deleteBooking,
+  addBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
   getQuadraById,
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
   DEFAULT_HORARIOS_SEMANAIS,
 } from "@/lib/api";
 import {
   Plus, Trash2, Loader2, Save, Upload, MapPin, LogOut, X,
-  Settings, Edit2, ChevronRight, Phone, User as UserIcon, Check, Clock,
+  Settings, Edit2, ChevronRight, ChevronLeft, Phone, User as UserIcon, Check, Clock,
+  Calendar, Repeat,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function getDates(count = 21) {
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
 }
 
 const DAY_KEYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
@@ -484,6 +477,714 @@ function NewArenaPanel({ onCreated, onCancel }: { onCreated: (a: Quadra) => void
   );
 }
 
+// ── Agenda Tabs Component ─────────────────────────────────────────────────────
+
+type AgendaTab = "horario" | "quadra" | "recorrente";
+type OutlookView = "semanal" | "mensal";
+
+function getWeekDates(baseDate: string): string[] {
+  const d = new Date(baseDate + "T12:00:00");
+  const day = d.getDay(); // 0=dom
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - ((day + 6) % 7)); // go to monday
+  return Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd.toISOString().slice(0, 10);
+  });
+}
+
+function getMonthDates(year: number, month: number): string[][] {
+  const first = new Date(year, month, 1);
+  const startDay = (first.getDay() + 6) % 7; // 0=seg
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weeks: string[][] = [];
+  let week: string[] = Array(startDay).fill("");
+  for (let d = 1; d <= daysInMonth; d++) {
+    week.push(`${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    if (week.length === 7) { weeks.push(week); week = []; }
+  }
+  if (week.length > 0) {
+    while (week.length < 7) week.push("");
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+const MONTH_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+function AgendaTabs({
+  arena, courts, selectedDate, onDateChange, onBookingChange,
+}: {
+  arena: Quadra;
+  courts: SubQuadra[];
+  selectedDate: string;
+  onDateChange: (d: string) => void;
+  onBookingChange: () => Promise<unknown>;
+}) {
+  const [tab, setTab] = useState<AgendaTab>("horario");
+  const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: number } | null>(null);
+  const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
+
+  // Outlook state
+  const [outlookView, setOutlookView] = useState<OutlookView>("semanal");
+  const [outlookWeekBase, setOutlookWeekBase] = useState<string>(selectedDate);
+  const [outlookMonth, setOutlookMonth] = useState(() => {
+    const d = new Date(selectedDate + "T12:00:00");
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  // Recurrent state
+  const [recForm, setRecForm] = useState<{
+    quadra_id: string; hora: string; recorrencia: "semanal" | "quinzenal" | "mensal";
+    data_inicio: string; nome: string; tel: string;
+  }>({
+    quadra_id: courts[0]?.id ?? "",
+    hora: "",
+    recorrencia: "semanal",
+    data_inicio: todayISO(),
+    nome: "",
+    tel: "",
+  });
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState("");
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+
+  const dayKey = getDayKey(selectedDate);
+  const allBookings = arena.reservas ?? [];
+
+  // ── Booking handlers ──
+  async function handleAddBooking(courtId: string, hora: number) {
+    if (!bookingForm.nome.trim()) return;
+    setBookingLoading(true);
+    try {
+      await addBooking(arena.id, {
+        quadra_id: courtId,
+        data: selectedDate,
+        hora,
+        nome_cliente: bookingForm.nome.trim(),
+        telefone: bookingForm.tel.trim() || undefined,
+      });
+      await onBookingChange();
+      setBookingCell(null);
+      setBookingForm({ nome: "", tel: "" });
+    } finally { setBookingLoading(false); }
+  }
+
+  async function handleDeleteBooking(bookingId: string) {
+    setDeletingBookingId(bookingId);
+    try {
+      await deleteBooking(arena.id, bookingId);
+      await onBookingChange();
+    } finally { setDeletingBookingId(null); }
+  }
+
+  async function handleAddRecurrent() {
+    if (!recForm.nome.trim() || !recForm.hora || !recForm.quadra_id) {
+      setRecError("Preencha todos os campos obrigatórios");
+      return;
+    }
+    setRecLoading(true);
+    setRecError("");
+    try {
+      await addRecurrentBooking(arena.id, {
+        quadra_id: recForm.quadra_id,
+        hora: parseInt(recForm.hora),
+        nome_cliente: recForm.nome.trim(),
+        telefone: recForm.tel.trim() || undefined,
+        recorrencia: recForm.recorrencia,
+        data_inicio: recForm.data_inicio,
+      });
+      await onBookingChange();
+      setRecForm(p => ({ ...p, nome: "", tel: "", hora: "" }));
+    } catch (err) {
+      setRecError(err instanceof Error ? err.message : "Erro");
+    } finally { setRecLoading(false); }
+  }
+
+  async function handleDeleteGroup(grupoId: string) {
+    setDeletingGroupId(grupoId);
+    try {
+      await deleteBookingGroup(arena.id, grupoId);
+      await onBookingChange();
+    } finally { setDeletingGroupId(null); }
+  }
+
+  // ── Outlook booking (from calendar click) ──
+  async function handleOutlookBooking(courtId: string, date: string, hora: number) {
+    if (!bookingForm.nome.trim()) return;
+    setBookingLoading(true);
+    try {
+      await addBooking(arena.id, {
+        quadra_id: courtId,
+        data: date,
+        hora,
+        nome_cliente: bookingForm.nome.trim(),
+        telefone: bookingForm.tel.trim() || undefined,
+      });
+      await onBookingChange();
+      setBookingCell(null);
+      setBookingForm({ nome: "", tel: "" });
+    } finally { setBookingLoading(false); }
+  }
+
+  const inp = "px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
+
+  const tabs: { key: AgendaTab; label: string; icon: React.ReactNode }[] = [
+    { key: "horario", label: "Por Horário", icon: <Clock className="w-4 h-4" /> },
+    { key: "quadra", label: "Por Quadra", icon: <Calendar className="w-4 h-4" /> },
+    { key: "recorrente", label: "Recorrente", icon: <Repeat className="w-4 h-4" /> },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => { setTab(t.key); setBookingCell(null); }}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              tab === t.key ? "bg-white text-green-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}>
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ════════════ TAB: POR HORÁRIO ════════════ */}
+      {tab === "horario" && (
+        <div className="space-y-4">
+          {/* Date navigation */}
+          <div className="flex items-center gap-3">
+            <button onClick={() => {
+              const d = new Date(selectedDate + "T12:00:00");
+              d.setDate(d.getDate() - 1);
+              onDateChange(d.toISOString().slice(0, 10));
+            }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+              <ChevronLeft className="w-4 h-4 text-gray-500" />
+            </button>
+            <input type="date" value={selectedDate} onChange={e => onDateChange(e.target.value)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium" />
+            <button onClick={() => {
+              const d = new Date(selectedDate + "T12:00:00");
+              d.setDate(d.getDate() + 1);
+              onDateChange(d.toISOString().slice(0, 10));
+            }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            </button>
+            <button onClick={() => onDateChange(todayISO())}
+              className="text-xs text-green-600 hover:text-green-700 font-medium px-2 py-1 rounded hover:bg-green-50">
+              Hoje
+            </button>
+            <span className="text-sm text-gray-500">
+              {formatDateLabel(selectedDate).dia}, {formatDateLabel(selectedDate).num} {formatDateLabel(selectedDate).mes}
+            </span>
+          </div>
+
+          {/* Time × Courts grid */}
+          {(() => {
+            const allSlotsSet = new Set<number>();
+            courts.forEach(c => {
+              const slots = c.horariosSemanais?.[dayKey]?.slots ?? [];
+              slots.forEach(s => allSlotsSet.add(s));
+            });
+            const allSlots = Array.from(allSlotsSet).sort((a, b) => a - b);
+            if (allSlots.length === 0) {
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                  <p className="text-sm text-gray-400">Nenhum horário configurado para esse dia.</p>
+                </div>
+              );
+            }
+            const dayBookings = allBookings.filter(r => r.data === selectedDate);
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-20 sticky left-0 bg-gray-50">Horário</th>
+                        {courts.map(c => (
+                          <th key={c.id} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 min-w-[180px]">
+                            {c.nome}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {allSlots.map(hora => (
+                        <tr key={hora}>
+                          <td className="px-4 py-2 font-mono font-semibold text-gray-500 sticky left-0 bg-white border-r border-gray-100">
+                            {String(hora).padStart(2, "0")}:00
+                          </td>
+                          {courts.map(c => {
+                            const courtSlots = c.horariosSemanais?.[dayKey]?.slots ?? [];
+                            const isUnavailable = !courtSlots.includes(hora);
+                            const booking = dayBookings.find(b => b.quadra_id === c.id && b.hora === hora);
+                            const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === hora;
+
+                            if (isUnavailable) {
+                              return (
+                                <td key={c.id} className="px-3 py-2 relative">
+                                  <div className="h-10 rounded-lg" style={{
+                                    background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px)",
+                                  }} />
+                                </td>
+                              );
+                            }
+
+                            if (booking) {
+                              return (
+                                <td key={c.id} className="px-3 py-2">
+                                  <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${
+                                    booking.recorrencia ? "bg-blue-50 border border-blue-200" : "bg-amber-50 border border-amber-200"
+                                  }`}>
+                                    <UserIcon className={`w-3.5 h-3.5 shrink-0 ${booking.recorrencia ? "text-blue-500" : "text-amber-500"}`} />
+                                    <span className="text-gray-800 font-medium text-xs truncate flex-1">{booking.nome_cliente}</span>
+                                    {booking.recorrencia && <Repeat className="w-3 h-3 text-blue-400 shrink-0" />}
+                                    <button onClick={() => handleDeleteBooking(booking.id)}
+                                      disabled={deletingBookingId === booking.id}
+                                      className="p-0.5 text-gray-300 hover:text-red-500 shrink-0">
+                                      {deletingBookingId === booking.id
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : <X className="w-3 h-3" />}
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            if (isEditing) {
+                              return (
+                                <td key={c.id} className="px-3 py-2">
+                                  <div className="flex items-center gap-1">
+                                    <input autoFocus placeholder="Nome" value={bookingForm.nome}
+                                      onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
+                                      onKeyDown={e => e.key === "Enter" && handleAddBooking(c.id, hora)}
+                                      className={`flex-1 min-w-0 ${inp}`} />
+                                    <input placeholder="Tel" value={bookingForm.tel}
+                                      onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
+                                      onKeyDown={e => e.key === "Enter" && handleAddBooking(c.id, hora)}
+                                      className={`w-24 ${inp}`} />
+                                    <button onClick={() => handleAddBooking(c.id, hora)} disabled={bookingLoading}
+                                      className="p-1 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-60">
+                                      {bookingLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                                      className="p-1 border border-gray-200 rounded-lg text-gray-400">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={c.id} className="px-3 py-2">
+                                <button onClick={() => { setBookingCell({ courtId: c.id, hora }); setBookingForm({ nome: "", tel: "" }); }}
+                                  className="w-full h-10 rounded-lg border-2 border-dashed border-green-200 hover:border-green-400 hover:bg-green-50 transition-colors flex items-center justify-center">
+                                  <span className="text-xs text-green-500 font-medium">+ Reservar</span>
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ════════════ TAB: POR QUADRA (OUTLOOK) ════════════ */}
+      {tab === "quadra" && (
+        <div className="space-y-4">
+          {/* View toggle + navigation */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+              <button onClick={() => setOutlookView("semanal")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${outlookView === "semanal" ? "bg-white text-green-700 shadow-sm" : "text-gray-500"}`}>
+                Semanal
+              </button>
+              <button onClick={() => setOutlookView("mensal")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${outlookView === "mensal" ? "bg-white text-green-700 shadow-sm" : "text-gray-500"}`}>
+                Mensal
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {outlookView === "semanal" ? (
+                <>
+                  <button onClick={() => {
+                    const d = new Date(outlookWeekBase + "T12:00:00");
+                    d.setDate(d.getDate() - 7);
+                    setOutlookWeekBase(d.toISOString().slice(0, 10));
+                  }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <ChevronLeft className="w-4 h-4 text-gray-500" />
+                  </button>
+                  <button onClick={() => setOutlookWeekBase(todayISO())}
+                    className="text-xs text-green-600 font-medium px-2 py-1 rounded hover:bg-green-50">Hoje</button>
+                  <button onClick={() => {
+                    const d = new Date(outlookWeekBase + "T12:00:00");
+                    d.setDate(d.getDate() + 7);
+                    setOutlookWeekBase(d.toISOString().slice(0, 10));
+                  }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => {
+                    setOutlookMonth(p => p.month === 0 ? { year: p.year - 1, month: 11 } : { ...p, month: p.month - 1 });
+                  }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <ChevronLeft className="w-4 h-4 text-gray-500" />
+                  </button>
+                  <span className="text-sm font-semibold text-gray-700 min-w-[140px] text-center">
+                    {MONTH_FULL[outlookMonth.month]} {outlookMonth.year}
+                  </span>
+                  <button onClick={() => {
+                    setOutlookMonth(p => p.month === 11 ? { year: p.year + 1, month: 0 } : { ...p, month: p.month + 1 });
+                  }} className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Weekly Outlook View ── */}
+          {outlookView === "semanal" && (() => {
+            const weekDates = getWeekDates(outlookWeekBase);
+            const weekLabel = (() => {
+              const f = formatDateLabel(weekDates[0]);
+              const l = formatDateLabel(weekDates[6]);
+              return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
+            })();
+            // Collect all slots across all courts for the week
+            const allHoursSet = new Set<number>();
+            courts.forEach(c => {
+              weekDates.forEach(date => {
+                const dk = getDayKey(date);
+                (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allHoursSet.add(s));
+              });
+            });
+            const allHours = Array.from(allHoursSet).sort((a, b) => a - b);
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-4 py-2 border-b border-gray-100 text-sm font-semibold text-gray-600">
+                  {weekLabel}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-400 w-14 sticky left-0 bg-gray-50 border-r border-gray-100" rowSpan={2}>Hora</th>
+                        {weekDates.map(date => {
+                          const { dia, num, mes } = formatDateLabel(date);
+                          const isToday = date === todayISO();
+                          return (
+                            <th key={date} colSpan={courts.length}
+                              className={`px-1 py-1.5 text-center font-semibold border-l border-gray-200 ${isToday ? "bg-green-50 text-green-700" : "text-gray-500"}`}>
+                              {dia} {num}/{mes}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        {weekDates.map(date =>
+                          courts.map(c => (
+                            <th key={`${date}-${c.id}`} className="px-1 py-1 text-center text-[10px] font-medium text-gray-400 border-l border-gray-100 min-w-[80px]">
+                              {c.nome}
+                            </th>
+                          ))
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allHours.map(hora => (
+                        <tr key={hora} className="border-t border-gray-100 hover:bg-gray-50/50">
+                          <td className="px-2 py-1 font-mono font-semibold text-gray-400 sticky left-0 bg-white border-r border-gray-100">
+                            {String(hora).padStart(2, "0")}:00
+                          </td>
+                          {weekDates.map(date => {
+                            const dk = getDayKey(date);
+                            return courts.map(c => {
+                              const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
+                              const isUnavailable = !courtSlots.includes(hora);
+                              const booking = allBookings.find(b => b.quadra_id === c.id && b.data === date && b.hora === hora);
+                              const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === hora && selectedDate === date;
+
+                              if (isUnavailable) {
+                                return (
+                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
+                                    <div className="h-7 rounded" style={{
+                                      background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
+                                    }} />
+                                  </td>
+                                );
+                              }
+
+                              if (booking) {
+                                return (
+                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
+                                    <div className={`h-7 rounded flex items-center gap-0.5 px-1 cursor-default group ${
+                                      booking.recorrencia ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+                                    }`} title={`${booking.nome_cliente}${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
+                                      <span className="truncate text-[10px] font-medium flex-1">{booking.nome_cliente}</span>
+                                      <button onClick={() => handleDeleteBooking(booking.id)}
+                                        disabled={deletingBookingId === booking.id}
+                                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 shrink-0">
+                                        {deletingBookingId === booking.id
+                                          ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                          : <X className="w-2.5 h-2.5" />}
+                                      </button>
+                                    </div>
+                                  </td>
+                                );
+                              }
+
+                              if (isEditing) {
+                                return (
+                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100" colSpan={1}>
+                                    <div className="flex items-center gap-0.5">
+                                      <input autoFocus placeholder="Nome" value={bookingForm.nome}
+                                        onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
+                                        onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, hora)}
+                                        className="w-16 px-1 py-0.5 border border-gray-300 rounded text-[10px]" />
+                                      <button onClick={() => handleOutlookBooking(c.id, date, hora)} disabled={bookingLoading}
+                                        className="p-0.5 bg-green-600 text-white rounded">
+                                        {bookingLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Check className="w-2.5 h-2.5" />}
+                                      </button>
+                                      <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                                        className="p-0.5 text-gray-400">
+                                        <X className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                );
+                              }
+
+                              return (
+                                <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
+                                  <button onClick={() => {
+                                    onDateChange(date);
+                                    setBookingCell({ courtId: c.id, hora });
+                                    setBookingForm({ nome: "", tel: "" });
+                                  }}
+                                    className="w-full h-7 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
+                                </td>
+                              );
+                            });
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Monthly Outlook View ── */}
+          {outlookView === "mensal" && (() => {
+            const monthWeeks = getMonthDates(outlookMonth.year, outlookMonth.month);
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map(d => (
+                          <th key={d} className="px-2 py-2 text-center text-xs font-semibold text-gray-500">{d}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthWeeks.map((week, wi) => (
+                        <tr key={wi} className="border-t border-gray-100">
+                          {week.map((date, di) => {
+                            if (!date) return <td key={di} className="px-2 py-3 bg-gray-50" />;
+                            const { num } = formatDateLabel(date);
+                            const isToday = date === todayISO();
+                            const dayBookings = allBookings.filter(b => b.data === date);
+                            const bookingCount = dayBookings.length;
+                            // Group by court
+                            const courtCounts = courts.map(c => ({
+                              court: c,
+                              count: dayBookings.filter(b => b.quadra_id === c.id).length,
+                            }));
+
+                            return (
+                              <td key={di} className={`px-1.5 py-1.5 align-top cursor-pointer hover:bg-green-50 transition-colors ${isToday ? "bg-green-50" : ""}`}
+                                onClick={() => {
+                                  setOutlookView("semanal");
+                                  setOutlookWeekBase(date);
+                                  onDateChange(date);
+                                }}>
+                                <div className={`text-xs font-semibold mb-1 ${isToday ? "text-green-700" : "text-gray-700"}`}>
+                                  {num}
+                                </div>
+                                {bookingCount > 0 && (
+                                  <div className="space-y-0.5">
+                                    {courtCounts.filter(cc => cc.count > 0).map(cc => (
+                                      <div key={cc.court.id} className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5 truncate">
+                                        {cc.court.nome}: {cc.count}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ════════════ TAB: RECORRENTE ════════════ */}
+      {tab === "recorrente" && (
+        <div className="space-y-5">
+          {/* Form */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <Repeat className="w-4 h-4 text-green-600" /> Novo Agendamento Recorrente
+            </h3>
+
+            {recError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{recError}</p>}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Quadra *</label>
+                <select value={recForm.quadra_id} onChange={e => setRecForm(p => ({ ...p, quadra_id: e.target.value }))}
+                  className={`w-full ${inp}`}>
+                  {courts.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Horário *</label>
+                <select value={recForm.hora} onChange={e => setRecForm(p => ({ ...p, hora: e.target.value }))}
+                  className={`w-full ${inp}`}>
+                  <option value="">Selecione</option>
+                  {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
+                    <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Recorrência *</label>
+                <div className="flex gap-2">
+                  {([["semanal", "Semanal"], ["quinzenal", "Quinzenal"], ["mensal", "Mensal"]] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setRecForm(p => ({ ...p, recorrencia: val }))}
+                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                        recForm.recorrencia === val ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-600 border-gray-300"
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">A partir de *</label>
+                <input type="date" value={recForm.data_inicio} onChange={e => setRecForm(p => ({ ...p, data_inicio: e.target.value }))}
+                  className={`w-full ${inp}`} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
+                <input value={recForm.nome} onChange={e => setRecForm(p => ({ ...p, nome: e.target.value }))}
+                  placeholder="João Silva" className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Telefone</label>
+                <input value={recForm.tel} onChange={e => setRecForm(p => ({ ...p, tel: e.target.value }))}
+                  placeholder="(11) 99999-9999" className={`w-full ${inp}`} />
+              </div>
+            </div>
+
+            <button onClick={handleAddRecurrent} disabled={recLoading}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              {recLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
+              Agendar Recorrente (6 meses)
+            </button>
+          </div>
+
+          {/* Existing recurrent groups */}
+          {(() => {
+            const groups = new Map<string, { bookings: Reserva[]; recorrencia: string }>();
+            allBookings.forEach(b => {
+              if (b.recorrencia_grupo_id) {
+                if (!groups.has(b.recorrencia_grupo_id)) {
+                  groups.set(b.recorrencia_grupo_id, { bookings: [], recorrencia: b.recorrencia || "" });
+                }
+                groups.get(b.recorrencia_grupo_id)!.bookings.push(b);
+              }
+            });
+            if (groups.size === 0) return null;
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-800">Agendamentos Recorrentes Ativos</h3>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {Array.from(groups.entries()).map(([grupoId, { bookings, recorrencia }]) => {
+                    const first = bookings.sort((a, b) => a.data.localeCompare(b.data))[0];
+                    const last = bookings[bookings.length - 1];
+                    const court = courts.find(c => c.id === first.quadra_id);
+                    const futureCount = bookings.filter(b => b.data >= todayISO()).length;
+                    return (
+                      <div key={grupoId} className="px-5 py-3 flex items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <UserIcon className="w-4 h-4 text-blue-500" />
+                            <span className="font-medium text-gray-800">{first.nome_cliente}</span>
+                            {first.telefone && <span className="text-gray-400 text-xs">({first.telefone})</span>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                            <span>{court?.nome ?? "Quadra"}</span>
+                            <span>{String(first.hora).padStart(2, "0")}:00</span>
+                            <span className="capitalize bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">{recorrencia}</span>
+                            <span>{first.data} → {last.data}</span>
+                            <span>{futureCount} restantes</span>
+                          </div>
+                        </div>
+                        <button onClick={() => handleDeleteGroup(grupoId)}
+                          disabled={deletingGroupId === grupoId}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50">
+                          {deletingGroupId === grupoId
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />}
+                          Cancelar tudo
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 function Dashboard({ user }: { user: User }) {
@@ -497,11 +1198,6 @@ function Dashboard({ user }: { user: User }) {
   const [isNewArena, setIsNewArena] = useState(false);
   const [addingCourt, setAddingCourt] = useState(false);
   const [courtError, setCourtError] = useState("");
-  const [bookingSlot, setBookingSlot] = useState<number | null>(null);
-  const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
-  const [bookingLoading, setBookingLoading] = useState(false);
-  const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
-  const dateRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getMinhasQuadras()
@@ -517,22 +1213,13 @@ function Dashboard({ user }: { user: User }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dates = getDates(21);
   const selectedArena = arenas.find(a => a.id === selectedArenaId);
   const courts = selectedArena?.quadrasInternas ?? [];
-  const selectedCourt = courts.find(c => c.id === selectedCourtId);
-
-  const dayKey = getDayKey(selectedDate);
-  const availableSlots = selectedCourt?.horariosSemanais?.[dayKey]?.slots ?? [];
-  const bookingsForDay = (selectedArena?.reservas ?? []).filter(
-    r => r.quadra_id === selectedCourtId && r.data === selectedDate
-  );
 
   function selectArena(a: Quadra) {
     setSelectedArenaId(a.id);
     setIsNewArena(false);
     setEditingCourtId(null);
-    setBookingSlot(null);
     const firstCourt = a.quadrasInternas?.[0];
     setSelectedCourtId(firstCourt?.id ?? null);
   }
@@ -557,32 +1244,6 @@ function Dashboard({ user }: { user: User }) {
     } catch (err) {
       setCourtError(err instanceof Error ? err.message : "Erro ao adicionar quadra");
     } finally { setAddingCourt(false); }
-  }
-
-  async function handleAddBooking() {
-    if (!selectedArenaId || !selectedCourtId || bookingSlot === null || !bookingForm.nome.trim()) return;
-    setBookingLoading(true);
-    try {
-      await addBooking(selectedArenaId, {
-        quadra_id: selectedCourtId,
-        data: selectedDate,
-        hora: bookingSlot,
-        nome_cliente: bookingForm.nome.trim(),
-        telefone: bookingForm.tel.trim() || undefined,
-      });
-      await refreshArena();
-      setBookingSlot(null);
-      setBookingForm({ nome: "", tel: "" });
-    } finally { setBookingLoading(false); }
-  }
-
-  async function handleDeleteBooking(bookingId: string) {
-    if (!selectedArenaId) return;
-    setDeletingBookingId(bookingId);
-    try {
-      await deleteBooking(selectedArenaId, bookingId);
-      await refreshArena();
-    } finally { setDeletingBookingId(null); }
   }
 
   async function handleDeleteArena() {
@@ -685,7 +1346,7 @@ function Dashboard({ user }: { user: User }) {
               {courts.map(c => (
                 <div key={c.id} className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => { setSelectedCourtId(c.id); setEditingCourtId(null); setBookingSlot(null); }}
+                    onClick={() => { setSelectedCourtId(c.id); setEditingCourtId(null); }}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${selectedCourtId === c.id ? "bg-green-100 text-green-800" : "hover:bg-gray-100 text-gray-600"}`}
                   >
                     {c.imagemCapa ? (
@@ -743,220 +1404,15 @@ function Dashboard({ user }: { user: User }) {
                 </div>
               )}
 
-              {/* Calendar + slots */}
-              {selectedCourt && (
-                <>
-                  {/* Date picker */}
-                  <div>
-                    <div ref={dateRowRef} className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                      {dates.map(iso => {
-                        const { dia, num, mes } = formatDateLabel(iso);
-                        const isToday = iso === todayISO();
-                        const isSel = iso === selectedDate;
-                        return (
-                          <button key={iso} onClick={() => { setSelectedDate(iso); setBookingSlot(null); }}
-                            className={`shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all border ${
-                              isSel
-                                ? "bg-green-600 text-white border-green-600"
-                                : isToday
-                                ? "border-green-300 text-green-700 bg-green-50"
-                                : "border-gray-200 text-gray-600 hover:border-green-300 bg-white"
-                            }`}
-                          >
-                            <span className="text-xs font-medium">{dia}</span>
-                            <span className="text-lg font-bold leading-none">{num}</span>
-                            <span className="text-xs opacity-70">{mes}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* ── Visão por Horário ── */}
-                  {courts.length > 1 && (() => {
-                    const allSlotsSet = new Set<number>();
-                    courts.forEach(c => {
-                      const slots = c.horariosSemanais?.[dayKey]?.slots ?? [];
-                      slots.forEach(s => allSlotsSet.add(s));
-                    });
-                    const allSlots = Array.from(allSlotsSet).sort((a, b) => a - b);
-                    if (allSlots.length === 0) return null;
-
-                    const allBookings = selectedArena?.reservas?.filter(r => r.data === selectedDate) ?? [];
-
-                    return (
-                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                        <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-green-600" />
-                          <h3 className="text-sm font-semibold text-gray-800">Visão por Horário</h3>
-                          <span className="text-xs text-gray-400 ml-1">
-                            {formatDateLabel(selectedDate).dia}, {formatDateLabel(selectedDate).num}/{formatDateLabel(selectedDate).mes}
-                          </span>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-gray-50 border-b border-gray-100">
-                                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-20">Horário</th>
-                                {courts.map(c => (
-                                  <th key={c.id} className="px-4 py-2 text-left text-xs font-semibold text-gray-500 min-w-[160px]">
-                                    {c.nome}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                              {allSlots.map(hora => (
-                                <tr key={hora} className="hover:bg-gray-50">
-                                  <td className="px-4 py-2.5 font-mono font-semibold text-gray-500">
-                                    {String(hora).padStart(2, "0")}:00
-                                  </td>
-                                  {courts.map(c => {
-                                    const courtSlots = c.horariosSemanais?.[dayKey]?.slots ?? [];
-                                    if (!courtSlots.includes(hora)) {
-                                      return (
-                                        <td key={c.id} className="px-4 py-2.5">
-                                          <span className="text-xs text-gray-300">—</span>
-                                        </td>
-                                      );
-                                    }
-                                    const booking = allBookings.find(b => b.quadra_id === c.id && b.hora === hora);
-                                    return (
-                                      <td key={c.id} className={`px-4 py-2.5 ${booking ? "bg-amber-50" : ""}`}>
-                                        {booking ? (
-                                          <div className="flex items-center gap-1.5">
-                                            <UserIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                            <span className="text-gray-800 font-medium truncate">{booking.nome_cliente}</span>
-                                            {booking.telefone && (
-                                              <span className="text-gray-400 text-xs truncate">({booking.telefone})</span>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                            <Check className="w-3 h-3" /> Livre
-                                          </span>
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* ── Visão por Quadra (slots) ── */}
-                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-800">{selectedCourt.nome}</h3>
-                        <p className="text-xs text-gray-400">
-                          {formatDateLabel(selectedDate).dia}, {formatDateLabel(selectedDate).num}/{formatDateLabel(selectedDate).mes}
-                        </p>
-                      </div>
-                      {selectedCourt.imagemCapa && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={selectedCourt.imagemCapa} alt="" className="w-12 h-12 rounded-lg object-cover" />
-                      )}
-                    </div>
-
-                    {availableSlots.length === 0 ? (
-                      <div className="px-5 py-8 text-center">
-                        <p className="text-sm text-gray-400">Nenhum horário configurado para esse dia.</p>
-                        <button onClick={() => setEditingCourtId(selectedCourt.id)}
-                          className="mt-2 text-xs text-green-600 hover:underline">
-                          Configurar horários →
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-gray-100">
-                        {availableSlots.map(hora => {
-                          const booking = bookingsForDay.find(b => b.hora === hora);
-                          const isBookingThis = bookingSlot === hora;
-
-                          return (
-                            <div key={hora} className={`px-5 py-3 flex items-center gap-4 ${booking ? "bg-amber-50" : ""}`}>
-                              {/* Time */}
-                              <span className="text-sm font-mono font-semibold text-gray-500 w-12 shrink-0">
-                                {String(hora).padStart(2, "0")}:00
-                              </span>
-
-                              {/* Content */}
-                              <div className="flex-1">
-                                {booking ? (
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1.5 text-sm text-gray-800 font-medium">
-                                      <UserIcon className="w-4 h-4 text-amber-500" />
-                                      {booking.nome_cliente}
-                                    </div>
-                                    {booking.telefone && (
-                                      <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                                        <Phone className="w-3.5 h-3.5" />
-                                        {booking.telefone}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : isBookingThis ? (
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      autoFocus
-                                      placeholder="Nome do cliente"
-                                      value={bookingForm.nome}
-                                      onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
-                                      className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                                      onKeyDown={e => e.key === "Enter" && handleAddBooking()}
-                                    />
-                                    <input
-                                      placeholder="Telefone"
-                                      value={bookingForm.tel}
-                                      onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
-                                      className="w-32 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                                      onKeyDown={e => e.key === "Enter" && handleAddBooking()}
-                                    />
-                                    <button onClick={handleAddBooking} disabled={bookingLoading}
-                                      className="p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-60">
-                                      {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                    </button>
-                                    <button onClick={() => { setBookingSlot(null); setBookingForm({ nome: "", tel: "" }); }}
-                                      className="p-1.5 border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600">
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-gray-300">──────</span>
-                                )}
-                              </div>
-
-                              {/* Actions */}
-                              {booking ? (
-                                <button
-                                  onClick={() => handleDeleteBooking(booking.id)}
-                                  disabled={deletingBookingId === booking.id}
-                                  className="shrink-0 p-1.5 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
-                                >
-                                  {deletingBookingId === booking.id
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <X className="w-4 h-4" />}
-                                </button>
-                              ) : !isBookingThis ? (
-                                <button
-                                  onClick={() => { setBookingSlot(hora); setBookingForm({ nome: "", tel: "" }); }}
-                                  className="shrink-0 flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium"
-                                >
-                                  <Plus className="w-3.5 h-3.5" /> Reservar
-                                </button>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </>
+              {/* ── Agenda tabs ── */}
+              {courts.length > 0 && (
+                <AgendaTabs
+                  arena={selectedArena}
+                  courts={courts}
+                  selectedDate={selectedDate}
+                  onDateChange={d => setSelectedDate(d)}
+                  onBookingChange={refreshArena}
+                />
               )}
             </div>
           </>
