@@ -573,7 +573,10 @@ function AgendaTabs({
   });
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState("");
+  const [recSuccess, setRecSuccess] = useState("");
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingSuccess, setBookingSuccess] = useState("");
 
   const dayKey = getDayKey(selectedDate);
   const allBookings = arena.reservas ?? [];
@@ -582,6 +585,8 @@ function AgendaTabs({
   async function handleAddBooking(courtId: string, hora: number) {
     if (!bookingForm.nome.trim()) return;
     setBookingLoading(true);
+    setBookingError("");
+    setBookingSuccess("");
     try {
       await addBooking(arena.id, {
         quadra_id: courtId,
@@ -591,8 +596,13 @@ function AgendaTabs({
         telefone: bookingForm.tel.trim() || undefined,
       });
       await onBookingChange();
+      setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado às ${String(hora).padStart(2, "0")}:00`);
       setBookingCell(null);
       setBookingForm({ nome: "", tel: "" });
+      setTimeout(() => setBookingSuccess(""), 4000);
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao reservar");
+      setTimeout(() => setBookingError(""), 5000);
     } finally { setBookingLoading(false); }
   }
 
@@ -611,8 +621,9 @@ function AgendaTabs({
     }
     setRecLoading(true);
     setRecError("");
+    setRecSuccess("");
     try {
-      await addRecurrentBooking(arena.id, {
+      const result = await addRecurrentBooking(arena.id, {
         quadra_id: recForm.quadra_id,
         hora: parseInt(recForm.hora),
         nome_cliente: recForm.nome.trim(),
@@ -621,7 +632,11 @@ function AgendaTabs({
         data_inicio: recForm.data_inicio,
       });
       await onBookingChange();
+      const msg = `✓ ${result.count} horários agendados para ${recForm.nome.trim()}`;
+      const conflMsg = result.conflitos > 0 ? ` (${result.conflitos} conflitos pulados)` : "";
+      setRecSuccess(msg + conflMsg);
       setRecForm(p => ({ ...p, nome: "", tel: "", hora: "" }));
+      setTimeout(() => setRecSuccess(""), 6000);
     } catch (err) {
       setRecError(err instanceof Error ? err.message : "Erro");
     } finally { setRecLoading(false); }
@@ -639,6 +654,7 @@ function AgendaTabs({
   async function handleOutlookBooking(courtId: string, date: string, hora: number) {
     if (!bookingForm.nome.trim()) return;
     setBookingLoading(true);
+    setBookingError("");
     try {
       await addBooking(arena.id, {
         quadra_id: courtId,
@@ -648,8 +664,13 @@ function AgendaTabs({
         telefone: bookingForm.tel.trim() || undefined,
       });
       await onBookingChange();
+      setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado`);
       setBookingCell(null);
       setBookingForm({ nome: "", tel: "" });
+      setTimeout(() => setBookingSuccess(""), 4000);
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao reservar");
+      setTimeout(() => setBookingError(""), 5000);
     } finally { setBookingLoading(false); }
   }
 
@@ -674,6 +695,18 @@ function AgendaTabs({
           </button>
         ))}
       </div>
+
+      {/* Feedback messages */}
+      {bookingSuccess && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 text-sm font-medium rounded-lg animate-in">
+          {bookingSuccess}
+        </div>
+      )}
+      {bookingError && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-sm font-medium rounded-lg">
+          {bookingError}
+        </div>
+      )}
 
       {/* ════════════ TAB: POR HORÁRIO ════════════ */}
       {tab === "horario" && (() => {
@@ -1080,6 +1113,7 @@ function AgendaTabs({
             </h3>
 
             {recError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{recError}</p>}
+            {recSuccess && <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{recSuccess}</p>}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

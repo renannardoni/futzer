@@ -483,7 +483,7 @@ export interface RecurrentBookingPayload {
 
 export async function addRecurrentBooking(
   arenaId: string, data: RecurrentBookingPayload
-): Promise<{ grupo_id: string; count: number; bookings: Reserva[] }> {
+): Promise<{ grupo_id: string; count: number; conflitos: number; conflitos_datas: string[]; bookings: Reserva[] }> {
   const token = getToken();
   const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/recurrent`, {
     method: 'POST',
