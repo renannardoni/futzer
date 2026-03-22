@@ -416,6 +416,7 @@ export async function resetPassword(token: string, new_password: string): Promis
 
 export function logout() {
   removeToken();
+  removeAdminToken();
 }
 
 // ── Sub-courts ────────────────────────────────────────────────────────────────
