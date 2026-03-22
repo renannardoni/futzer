@@ -9,7 +9,7 @@ import {
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
   addBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
-  getQuadraById,
+
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
   DEFAULT_HORARIOS_SEMANAIS,
 } from "@/lib/api";
@@ -1244,9 +1244,13 @@ function Dashboard({ user }: { user: User }) {
 
   async function refreshArena() {
     if (!selectedArenaId) return;
-    const updated = await getQuadraById(selectedArenaId);
-    setArenas(prev => prev.map(a => a.id === selectedArenaId ? updated : a));
-    return updated;
+    // Usar endpoint autenticado para garantir que reservas venham sempre
+    const all = await getMinhasQuadras();
+    const updated = all.find(a => a.id === selectedArenaId);
+    if (updated) {
+      setArenas(all);
+      return updated;
+    }
   }
 
   async function handleAddCourt() {
