@@ -480,6 +480,7 @@ export interface RecurrentBookingPayload {
   telefone?: string;
   recorrencia: 'semanal' | 'quinzenal' | 'mensal';
   data_inicio: string; // "2026-03-22"
+  data_fim?: string; // "2026-09-22"
 }
 
 export async function addRecurrentBooking(

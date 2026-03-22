@@ -560,14 +560,19 @@ function AgendaTabs({
   });
 
   // Recurrent state
+  const defaultEndDate = () => {
+    const d = new Date(); d.setMonth(d.getMonth() + 6);
+    return d.toISOString().slice(0, 10);
+  };
   const [recForm, setRecForm] = useState<{
     quadra_id: string; hora: string; recorrencia: "semanal" | "quinzenal" | "mensal";
-    data_inicio: string; nome: string; tel: string;
+    data_inicio: string; data_fim: string; nome: string; tel: string;
   }>({
     quadra_id: courts[0]?.id ?? "",
     hora: "",
     recorrencia: "semanal",
     data_inicio: todayISO(),
+    data_fim: defaultEndDate(),
     nome: "",
     tel: "",
   });
@@ -630,6 +635,7 @@ function AgendaTabs({
         telefone: recForm.tel.trim() || undefined,
         recorrencia: recForm.recorrencia,
         data_inicio: recForm.data_inicio,
+        data_fim: recForm.data_fim,
       });
       await onBookingChange();
 
@@ -1184,6 +1190,15 @@ function AgendaTabs({
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-3 mb-1">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Recorrente até *</label>
+                <input type="date" value={recForm.data_fim} onChange={e => setRecForm(p => ({ ...p, data_fim: e.target.value }))}
+                  min={recForm.data_inicio}
+                  className={`w-full ${inp}`} />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
@@ -1200,7 +1215,7 @@ function AgendaTabs({
             <button onClick={handleAddRecurrent} disabled={recLoading}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
               {recLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
-              Agendar Recorrente (6 meses)
+              Agendar Recorrente
             </button>
           </div>
 
