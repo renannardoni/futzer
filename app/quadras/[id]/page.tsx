@@ -45,11 +45,27 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
     return d.toISOString().slice(0, 10);
   });
 
+  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const monthLabel = (() => {
+    const first = new Date(dates[0] + "T12:00:00");
+    const last = new Date(dates[dates.length - 1] + "T12:00:00");
+    const m1 = MONTH_NAMES[first.getMonth()];
+    const m2 = MONTH_NAMES[last.getMonth()];
+    const y1 = first.getFullYear();
+    const y2 = last.getFullYear();
+    if (m1 === m2) return `${m1} ${y1}`;
+    if (y1 === y2) return `${m1} / ${m2} ${y1}`;
+    return `${m1} ${y1} / ${m2} ${y2}`;
+  })();
+
   return (
     <div className="space-y-5">
       {/* Date strip */}
       <div>
-        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium dark:text-gray-200">Data</label>
+          <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{monthLabel}</span>
+        </div>
         <div className="flex items-center gap-1">
           <button onClick={() => setDateOffset(p => Math.max(p - 7, 0))} disabled={dateOffset === 0}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30">
