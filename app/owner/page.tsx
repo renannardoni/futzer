@@ -532,6 +532,7 @@ function AgendaTabs({
   // Outlook state
   const [outlookView, setOutlookView] = useState<OutlookView>("semanal");
   const [outlookWeekBase, setOutlookWeekBase] = useState<string>(selectedDate);
+  const [outlookCourtId, setOutlookCourtId] = useState<string>(courts[0]?.id ?? "");
   const [outlookMonth, setOutlookMonth] = useState(() => {
     const d = new Date(selectedDate + "T12:00:00");
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -795,8 +796,26 @@ function AgendaTabs({
       })()}
 
       {/* ════════════ TAB: POR QUADRA (OUTLOOK) ════════════ */}
-      {tab === "quadra" && (
+      {tab === "quadra" && (() => {
+        const outlookCourt = courts.find(c => c.id === outlookCourtId) ?? courts[0];
+        return (
         <div className="space-y-4">
+          {/* Court selector */}
+          {courts.length > 1 && (
+            <div className="flex gap-2 flex-wrap">
+              {courts.map(c => (
+                <button key={c.id} onClick={() => setOutlookCourtId(c.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    outlookCourtId === c.id
+                      ? "bg-green-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}>
+                  {c.nome}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* View toggle + navigation */}
           <div className="flex items-center justify-between">
             <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
@@ -851,52 +870,42 @@ function AgendaTabs({
           </div>
 
           {/* ── Weekly Outlook View ── */}
-          {outlookView === "semanal" && (() => {
+          {outlookView === "semanal" && outlookCourt && (() => {
+            const c = outlookCourt;
             const weekDates = getWeekDates(outlookWeekBase);
             const weekLabel = (() => {
               const f = formatDateLabel(weekDates[0]);
               const l = formatDateLabel(weekDates[6]);
               return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
             })();
-            // Collect all slots across all courts for the week
+            // Collect slots for the selected court only
             const allHoursSet = new Set<number>();
-            courts.forEach(c => {
-              weekDates.forEach(date => {
-                const dk = getDayKey(date);
-                (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allHoursSet.add(s));
-              });
+            weekDates.forEach(date => {
+              const dk = getDayKey(date);
+              (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allHoursSet.add(s));
             });
             const allHours = Array.from(allHoursSet).sort((a, b) => a - b);
 
             return (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="px-4 py-2 border-b border-gray-100 text-sm font-semibold text-gray-600">
-                  {weekLabel}
+                  {c.nome} — {weekLabel}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
-                      <tr className="bg-gray-50">
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-400 w-14 sticky left-0 bg-gray-50 border-r border-gray-100" rowSpan={2}>Hora</th>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-400 w-14 sticky left-0 bg-gray-50 border-r border-gray-100">Hora</th>
                         {weekDates.map(date => {
                           const { dia, num, mes } = formatDateLabel(date);
                           const isToday = date === todayISO();
                           return (
-                            <th key={date} colSpan={courts.length}
-                              className={`px-1 py-1.5 text-center font-semibold border-l border-gray-200 ${isToday ? "bg-green-50 text-green-700" : "text-gray-500"}`}>
+                            <th key={date}
+                              className={`px-1 py-1.5 text-center font-semibold border-l border-gray-200 min-w-[100px] ${isToday ? "bg-green-50 text-green-700" : "text-gray-500"}`}>
                               {dia} {num}/{mes}
                             </th>
                           );
                         })}
-                      </tr>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        {weekDates.map(date =>
-                          courts.map(c => (
-                            <th key={`${date}-${c.id}`} className="px-1 py-1 text-center text-[10px] font-medium text-gray-400 border-l border-gray-100 min-w-[80px]">
-                              {c.nome}
-                            </th>
-                          ))
-                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -907,73 +916,71 @@ function AgendaTabs({
                           </td>
                           {weekDates.map(date => {
                             const dk = getDayKey(date);
-                            return courts.map(c => {
-                              const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
-                              const isUnavailable = !courtSlots.includes(hora);
-                              const booking = allBookings.find(b => b.quadra_id === c.id && b.data === date && b.hora === hora);
-                              const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === hora && selectedDate === date;
+                            const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
+                            const isUnavailable = !courtSlots.includes(hora);
+                            const booking = allBookings.find(b => b.quadra_id === c.id && b.data === date && b.hora === hora);
+                            const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === hora && selectedDate === date;
 
-                              if (isUnavailable) {
-                                return (
-                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
-                                    <div className="h-7 rounded" style={{
-                                      background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
-                                    }} />
-                                  </td>
-                                );
-                              }
-
-                              if (booking) {
-                                return (
-                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
-                                    <div className={`h-7 rounded flex items-center gap-0.5 px-1 cursor-default group ${
-                                      booking.recorrencia ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                                    }`} title={`${booking.nome_cliente}${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
-                                      <span className="truncate text-[10px] font-medium flex-1">{booking.nome_cliente}</span>
-                                      <button onClick={() => handleDeleteBooking(booking.id)}
-                                        disabled={deletingBookingId === booking.id}
-                                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 shrink-0">
-                                        {deletingBookingId === booking.id
-                                          ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                                          : <X className="w-2.5 h-2.5" />}
-                                      </button>
-                                    </div>
-                                  </td>
-                                );
-                              }
-
-                              if (isEditing) {
-                                return (
-                                  <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100" colSpan={1}>
-                                    <div className="flex items-center gap-0.5">
-                                      <input autoFocus placeholder="Nome" value={bookingForm.nome}
-                                        onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
-                                        onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, hora)}
-                                        className="w-16 px-1 py-0.5 border border-gray-300 rounded text-[10px]" />
-                                      <button onClick={() => handleOutlookBooking(c.id, date, hora)} disabled={bookingLoading}
-                                        className="p-0.5 bg-green-600 text-white rounded">
-                                        {bookingLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Check className="w-2.5 h-2.5" />}
-                                      </button>
-                                      <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
-                                        className="p-0.5 text-gray-400">
-                                        <X className="w-2.5 h-2.5" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                );
-                              }
-
+                            if (isUnavailable) {
                               return (
-                                <td key={`${date}-${c.id}`} className="px-0.5 py-0.5 border-l border-gray-100">
-                                  <button onClick={() => {
-                                    onDateChange(date);
-                                    setBookingCell({ courtId: c.id, hora });
-                                    setBookingForm({ nome: "", tel: "" });
-                                  }}
-                                    className="w-full h-7 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
+                                <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
+                                  <div className="h-8 rounded" style={{
+                                    background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
+                                  }} />
                                 </td>
                               );
-                            });
+                            }
+
+                            if (booking) {
+                              return (
+                                <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
+                                  <div className={`h-8 rounded flex items-center gap-1 px-2 cursor-default group ${
+                                    booking.recorrencia ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+                                  }`} title={`${booking.nome_cliente}${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
+                                    <span className="truncate text-xs font-medium flex-1">{booking.nome_cliente}</span>
+                                    <button onClick={() => handleDeleteBooking(booking.id)}
+                                      disabled={deletingBookingId === booking.id}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 shrink-0">
+                                      {deletingBookingId === booking.id
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : <X className="w-3 h-3" />}
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            if (isEditing) {
+                              return (
+                                <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
+                                  <div className="flex items-center gap-1">
+                                    <input autoFocus placeholder="Nome" value={bookingForm.nome}
+                                      onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
+                                      onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, hora)}
+                                      className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                    <button onClick={() => handleOutlookBooking(c.id, date, hora)} disabled={bookingLoading}
+                                      className="p-1 bg-green-600 text-white rounded">
+                                      {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                    </button>
+                                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                                      className="p-1 text-gray-400">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
+                                <button onClick={() => {
+                                  onDateChange(date);
+                                  setBookingCell({ courtId: c.id, hora });
+                                  setBookingForm({ nome: "", tel: "" });
+                                }}
+                                  className="w-full h-8 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
+                              </td>
+                            );
                           })}
                         </tr>
                       ))}
@@ -985,10 +992,14 @@ function AgendaTabs({
           })()}
 
           {/* ── Monthly Outlook View ── */}
-          {outlookView === "mensal" && (() => {
+          {outlookView === "mensal" && outlookCourt && (() => {
+            const c = outlookCourt;
             const monthWeeks = getMonthDates(outlookMonth.year, outlookMonth.month);
             return (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="px-4 py-2 border-b border-gray-100 text-sm font-semibold text-gray-600">
+                  {c.nome}
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs border-collapse">
                     <thead>
@@ -1005,13 +1016,8 @@ function AgendaTabs({
                             if (!date) return <td key={di} className="px-2 py-3 bg-gray-50" />;
                             const { num } = formatDateLabel(date);
                             const isToday = date === todayISO();
-                            const dayBookings = allBookings.filter(b => b.data === date);
+                            const dayBookings = allBookings.filter(b => b.data === date && b.quadra_id === c.id);
                             const bookingCount = dayBookings.length;
-                            // Group by court
-                            const courtCounts = courts.map(c => ({
-                              court: c,
-                              count: dayBookings.filter(b => b.quadra_id === c.id).length,
-                            }));
 
                             return (
                               <td key={di} className={`px-1.5 py-1.5 align-top cursor-pointer hover:bg-green-50 transition-colors ${isToday ? "bg-green-50" : ""}`}
@@ -1024,12 +1030,8 @@ function AgendaTabs({
                                   {num}
                                 </div>
                                 {bookingCount > 0 && (
-                                  <div className="space-y-0.5">
-                                    {courtCounts.filter(cc => cc.count > 0).map(cc => (
-                                      <div key={cc.court.id} className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5 truncate">
-                                        {cc.court.nome}: {cc.count}
-                                      </div>
-                                    ))}
+                                  <div className="text-[10px] bg-amber-100 text-amber-700 rounded px-1 py-0.5 text-center font-medium">
+                                    {bookingCount} reserva{bookingCount > 1 ? "s" : ""}
                                   </div>
                                 )}
                               </td>
@@ -1044,7 +1046,8 @@ function AgendaTabs({
             );
           })()}
         </div>
-      )}
+        );
+      })()}
 
       {/* ════════════ TAB: RECORRENTE ════════════ */}
       {tab === "recorrente" && (
