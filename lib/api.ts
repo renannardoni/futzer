@@ -490,7 +490,18 @@ export async function addRecurrentBooking(
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro ao criar recorrência');
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    const detail = errBody.detail;
+    if (typeof detail === 'object' && detail?.conflitos_datas) {
+      // 409 com dados de conflito estruturados
+      const err = new Error(detail.detail || 'Todos os horários já estão reservados');
+      (err as Error & { conflitos_datas: string[]; conflitos: number }).conflitos_datas = detail.conflitos_datas;
+      (err as Error & { conflitos: number }).conflitos = detail.conflitos;
+      throw err;
+    }
+    throw new Error(typeof detail === 'string' ? detail : 'Erro ao criar recorrência');
+  }
   return res.json();
 }
 

@@ -632,13 +632,33 @@ function AgendaTabs({
         data_inicio: recForm.data_inicio,
       });
       await onBookingChange();
-      const msg = `✓ ${result.count} horários agendados para ${recForm.nome.trim()}`;
-      const conflMsg = result.conflitos > 0 ? ` (${result.conflitos} conflitos pulados)` : "";
-      setRecSuccess(msg + conflMsg);
+
+      if (result.conflitos > 0) {
+        // Parcial: salvou alguns mas teve conflitos — aviso laranja
+        const datas = result.conflitos_datas.map((d: string) => {
+          const dt = new Date(d + "T12:00:00");
+          return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        }).join(", ");
+        const extra = result.conflitos > 10 ? ` e mais ${result.conflitos - 10}` : "";
+        setRecError(`⚠️ ${result.count} horários agendados, mas ${result.conflitos} NÃO foram cadastrados (já ocupados): ${datas}${extra}`);
+      } else {
+        setRecSuccess(`✓ ${result.count} horários agendados para ${recForm.nome.trim()}`);
+        setTimeout(() => setRecSuccess(""), 6000);
+      }
       setRecForm(p => ({ ...p, nome: "", tel: "", hora: "" }));
-      setTimeout(() => setRecSuccess(""), 6000);
-    } catch (err) {
-      setRecError(err instanceof Error ? err.message : "Erro");
+    } catch (err: unknown) {
+      // Erro total (todos conflitaram ou erro de rede)
+      const e = err as Error & { conflitos_datas?: string[]; conflitos?: number };
+      if (e.conflitos_datas && e.conflitos_datas.length > 0) {
+        const datas = e.conflitos_datas.slice(0, 10).map((d: string) => {
+          const dt = new Date(d + "T12:00:00");
+          return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        }).join(", ");
+        const extra = (e.conflitos ?? 0) > 10 ? ` e mais ${(e.conflitos ?? 0) - 10}` : "";
+        setRecError(`❌ Nenhum horário cadastrado — todos já estão ocupados: ${datas}${extra}`);
+      } else {
+        setRecError(`❌ ${e.message || "Erro ao criar recorrência"}`);
+      }
     } finally { setRecLoading(false); }
   }
 
@@ -1112,7 +1132,15 @@ function AgendaTabs({
               <Repeat className="w-4 h-4 text-green-600" /> Novo Agendamento Recorrente
             </h3>
 
-            {recError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{recError}</p>}
+            {recError && (
+              <div className={`text-sm font-medium rounded-lg px-4 py-3 border ${
+                recError.startsWith("⚠️")
+                  ? "bg-amber-50 border-amber-300 text-amber-800"
+                  : "bg-red-50 border-red-300 text-red-700"
+              }`}>
+                {recError}
+              </div>
+            )}
             {recSuccess && <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{recSuccess}</p>}
 
             <div className="grid grid-cols-2 gap-3">
