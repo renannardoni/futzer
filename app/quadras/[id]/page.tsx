@@ -6,8 +6,155 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getQuadraById, type Quadra } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X, Lock } from "lucide-react";
+import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
+
+// ── Helpers ──
+const DAY_KEYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"] as const;
+const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+function getDayKey(iso: string) { return DAY_KEYS[new Date(iso + "T12:00:00").getDay()]; }
+
+function buildWhatsAppUrl(phone: string, courtName: string, date: string, hour: number) {
+  const d = new Date(date + "T12:00:00");
+  const dayStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const hourStr = `${String(hour).padStart(2, "0")}:00`;
+  const cleanPhone = phone.replace(/\D/g, "");
+  const fullPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+  const msg = encodeURIComponent(`Olá! Gostaria de reservar a ${courtName} no dia ${dayStr} às ${hourStr}.`);
+  return `https://wa.me/${fullPhone}?text=${msg}`;
+}
+
+// ── Availability Sidebar ──
+function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [dateOffset, setDateOffset] = useState(0);
+  const courts = quadra.quadrasInternas ?? [];
+  const [selectedCourtId, setSelectedCourtId] = useState(courts[0]?.id ?? "");
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+
+  const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? courts[0];
+  const dayKey = getDayKey(selectedDate);
+  const availableSlots = selectedCourt?.horariosSemanais?.[dayKey]?.slots ?? [];
+  const reservas = quadra.reservas ?? [];
+  const dayReservas = reservas.filter(r => r.data === selectedDate && r.quadra_id === selectedCourtId);
+
+  const dates = Array.from({ length: 8 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + dateOffset + i);
+    return d.toISOString().slice(0, 10);
+  });
+
+  return (
+    <div className="space-y-5">
+      {/* Date strip */}
+      <div>
+        <label className="block text-sm font-medium mb-2 dark:text-gray-200">Data</label>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setDateOffset(p => Math.max(p - 7, 0))} disabled={dateOffset === 0}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none flex-1">
+            {dates.map(date => {
+              const d = new Date(date + "T12:00:00");
+              const isSelected = date === selectedDate;
+              return (
+                <button key={date} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
+                  className={`flex-shrink-0 flex flex-col items-center px-2 py-2 rounded-lg border text-xs w-[2.6rem] transition-colors ${
+                    isSelected
+                      ? 'bg-[#6AB945] text-white border-[#6AB945]'
+                      : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-[#6AB945]'
+                  }`}>
+                  <span className="font-medium">{DAY_NAMES[d.getDay()]}</span>
+                  <span className="text-sm font-bold mt-0.5">{d.getDate()}</span>
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={() => setDateOffset(p => p + 7)}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Court selector */}
+      {courts.length > 1 && (
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Quadra</label>
+          <div className="flex gap-2 flex-wrap">
+            {courts.map(c => (
+              <button key={c.id} onClick={() => { setSelectedCourtId(c.id); setSelectedSlot(null); }}
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  selectedCourtId === c.id
+                    ? 'bg-[#6AB945] text-white border-[#6AB945]'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:border-[#6AB945]'
+                }`}>
+                {c.nome}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Time slots */}
+      {selectedCourt && (
+        <div>
+          <label className="block text-sm font-medium mb-2 dark:text-gray-200">
+            Horários disponíveis — {selectedCourt.nome}
+          </label>
+          {availableSlots.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nenhum horário neste dia</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {availableSlots.sort((a, b) => a - b).map(hora => {
+                const isBooked = dayReservas.some(r => r.hora === hora);
+                const isSelected = selectedSlot === hora && !isBooked;
+
+                if (isBooked) {
+                  return (
+                    <div key={hora}
+                      className="py-2 rounded-md text-xs text-center cursor-not-allowed relative overflow-hidden border border-gray-200 dark:border-gray-600">
+                      <div className="absolute inset-0" style={{
+                        background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
+                      }} />
+                      <span className="relative text-gray-400 font-medium">{String(hora).padStart(2, "0")}:00</span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <button key={hora} onClick={() => setSelectedSlot(hora)}
+                    className={`py-2 rounded-md text-xs font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-[#6AB945] text-white border border-[#6AB945]'
+                        : 'border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40'
+                    }`}>
+                    {String(hora).padStart(2, "0")}:00
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* WhatsApp CTA */}
+      {selectedSlot !== null && quadra.telefone && selectedCourt && (
+        <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot)}
+          target="_blank" rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3.5 text-base font-semibold rounded-lg transition-colors">
+          <MessageCircle className="w-5 h-5" />
+          Reservar via WhatsApp
+        </a>
+      )}
+      {selectedSlot !== null && !quadra.telefone && (
+        <p className="text-sm text-gray-400 text-center">Entre em contato com a arena para reservar</p>
+      )}
+    </div>
+  );
+}
 
 const QuadraMap = dynamic(
   () => import('@/components/quadra-map').then(m => m.QuadraMap),
@@ -360,95 +507,37 @@ export default function QuadraPage() {
                   )}
                 </div>
 
-                {/* ALUGUEL — booking form (locked) */}
-                {quadra.modalidade === 'aluguel' && (
+                {/* ALUGUEL — availability or locked */}
+                {quadra.modalidade === 'aluguel' && quadra.mostrarDisponibilidade && (quadra.quadrasInternas?.length ?? 0) > 0 && (
+                  <AvailabilitySidebar quadra={quadra} />
+                )}
+
+                {quadra.modalidade === 'aluguel' && !quadra.mostrarDisponibilidade && (
                   <>
-                    <div className="space-y-5 mb-6 opacity-50 pointer-events-none select-none">
-
-                      {/* 10-day calendar strip */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Data</label>
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                          {Array.from({ length: 10 }, (_, i) => {
-                            const d = new Date();
-                            d.setDate(d.getDate() + i);
-                            const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-                            const isSelected = i === 0;
-                            return (
-                              <div
-                                key={i}
-                                className={`flex-shrink-0 flex flex-col items-center px-2 py-2 rounded-lg border text-xs w-[2.6rem] ${
-                                  isSelected
-                                    ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                                    : 'border-gray-200 text-gray-700 bg-white'
-                                }`}
-                              >
-                                <span className="font-medium">{DAY_NAMES[d.getDay()]}</span>
-                                <span className="text-sm font-bold mt-0.5">{d.getDate()}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Court selector */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Quadra</label>
-                        <div className="flex gap-2 flex-wrap">
-                          {['Quadra 1', 'Quadra 2'].map((q, i) => (
-                            <button
-                              key={q}
-                              className={`px-3 py-1.5 rounded-lg border text-sm font-medium ${
-                                i === 0
-                                  ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                                  : 'border-gray-200 text-gray-600 bg-white'
-                              }`}
-                            >
-                              {q}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Time slots */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Horários disponíveis — Quadra 1</label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {['07:00','08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00'].map((t) => (
-                            <button
-                              key={t}
-                              className="py-1.5 rounded-md border border-gray-200 text-xs text-gray-700 bg-white"
-                            >
-                              {t}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                    </div>
-
-                    <button
-                      disabled
-                      className="w-full flex items-center justify-center gap-2 bg-[#6AB945] text-white py-4 text-lg font-semibold rounded-lg opacity-50 cursor-not-allowed"
-                    >
-                      <Lock className="w-5 h-5" />
-                      Reservar quadra
-                    </button>
-                    <p className="text-center text-sm text-gray-400 mt-3 flex items-center justify-center gap-1">
-                      <Lock className="w-3.5 h-3.5" />
-                      Serviço bloqueado
+                    {quadra.telefone && (
+                      <a href={`https://wa.me/${quadra.telefone.replace(/\D/g, "").replace(/^(?!55)/, "55")}?text=${encodeURIComponent("Olá! Gostaria de saber sobre horários disponíveis.")}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3.5 text-base font-semibold rounded-lg transition-colors mb-3">
+                        <MessageCircle className="w-5 h-5" />
+                        Consultar horários via WhatsApp
+                      </a>
+                    )}
+                    <p className="text-center text-sm text-gray-400">
+                      Entre em contato para verificar disponibilidade
                     </p>
 
-                    <div className="mt-6 pt-6 border-t">
-                      <div className="flex justify-between mb-2 opacity-50">
-                        <span className="text-gray-600">{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)} x 1 hora` : 'Consulte o preço'}</span>
-                        <span>{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
+                    {quadra.precoPorHora != null && (
+                      <div className="mt-6 pt-6 border-t">
+                        <div className="flex justify-between mb-2">
+                          <span className="text-gray-600">Consulte o preço</span>
+                          <span>—</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-lg mt-4">
+                          <span>Total</span>
+                          <span>—</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between font-semibold text-lg mt-4 opacity-50">
-                        <span>Total</span>
-                        <span>{quadra.precoPorHora != null ? `R$ ${quadra.precoPorHora.toFixed(2)}` : '—'}</span>
-                      </div>
-                    </div>
+                    )}
                   </>
                 )}
 
