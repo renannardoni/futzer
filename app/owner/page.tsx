@@ -1219,7 +1219,7 @@ function AgendaTabs({
             </button>
           </div>
 
-          {/* Existing recurrent groups */}
+          {/* Dashboard de Recorrentes */}
           {(() => {
             const groups = new Map<string, { bookings: Reserva[]; recorrencia: string }>();
             allBookings.forEach(b => {
@@ -1230,47 +1230,101 @@ function AgendaTabs({
                 groups.get(b.recorrencia_grupo_id)!.bookings.push(b);
               }
             });
-            if (groups.size === 0) return null;
+            if (groups.size === 0) return (
+              <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-8 text-center">
+                <Repeat className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nenhum agendamento recorrente</p>
+              </div>
+            );
+
+            const today = todayISO();
+            const recLabels: Record<string, string> = { semanal: "Semanal", quinzenal: "Quinzenal", mensal: "Mensal" };
+            const DAY_NAMES_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
             return (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-800">Agendamentos Recorrentes Ativos</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <Repeat className="w-4 h-4 text-green-600" />
+                    Recorrentes Ativos ({groups.size})
+                  </h3>
                 </div>
-                <div className="divide-y divide-gray-100">
-                  {Array.from(groups.entries()).map(([grupoId, { bookings, recorrencia }]) => {
-                    const first = bookings.sort((a, b) => a.data.localeCompare(b.data))[0];
-                    const last = bookings[bookings.length - 1];
-                    const court = courts.find(c => c.id === first.quadra_id);
-                    const futureCount = bookings.filter(b => b.data >= todayISO()).length;
-                    return (
-                      <div key={grupoId} className="px-5 py-3 flex items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 text-sm">
-                            <UserIcon className="w-4 h-4 text-blue-500" />
-                            <span className="font-medium text-gray-800">{first.nome_cliente}</span>
-                            {first.telefone && <span className="text-gray-400 text-xs">({first.telefone})</span>}
+                {Array.from(groups.entries()).map(([grupoId, { bookings, recorrencia }]) => {
+                  const sorted = bookings.sort((a, b) => a.data.localeCompare(b.data));
+                  const first = sorted[0];
+                  const last = sorted[sorted.length - 1];
+                  const court = courts.find(c => c.id === first.quadra_id);
+                  const futureBookings = sorted.filter(b => b.data >= today);
+                  const pastBookings = sorted.filter(b => b.data < today);
+                  const nextBooking = futureBookings[0];
+                  const progress = sorted.length > 0 ? Math.round((pastBookings.length / sorted.length) * 100) : 0;
+
+                  const formatDate = (d: string) => {
+                    const dt = new Date(d + "T12:00:00");
+                    return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
+                  };
+                  const dayName = nextBooking ? DAY_NAMES_SHORT[new Date(nextBooking.data + "T12:00:00").getDay()] : "";
+
+                  return (
+                    <div key={grupoId} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="p-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <UserIcon className="w-4 h-4 text-blue-500" />
+                              <span className="font-semibold text-gray-800">{first.nome_cliente}</span>
+                              <span className="capitalize text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                                {recLabels[recorrencia] || recorrencia}
+                              </span>
+                            </div>
+                            {first.telefone && (
+                              <span className="text-xs text-gray-400 ml-6">{first.telefone}</span>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                            <span>{court?.nome ?? "Quadra"}</span>
-                            <span>{String(first.hora).padStart(2, "0")}:00</span>
-                            <span className="capitalize bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">{recorrencia}</span>
-                            <span>{first.data} → {last.data}</span>
-                            <span>{futureCount} restantes</span>
+                          <button onClick={() => handleDeleteGroup(grupoId)}
+                            disabled={deletingGroupId === grupoId}
+                            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
+                            {deletingGroupId === grupoId
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />}
+                            Cancelar
+                          </button>
+                        </div>
+
+                        {/* Info grid */}
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-medium">Quadra</p>
+                            <p className="text-sm font-semibold text-gray-700 truncate">{court?.nome ?? "—"}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-medium">Horário</p>
+                            <p className="text-sm font-semibold text-gray-700">{String(first.hora).padStart(2, "0")}:00</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg px-3 py-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-medium">Próximo</p>
+                            <p className="text-sm font-semibold text-gray-700">
+                              {nextBooking ? `${dayName} ${new Date(nextBooking.data + "T12:00:00").getDate()}/${new Date(nextBooking.data + "T12:00:00").getMonth() + 1}` : "—"}
+                            </p>
                           </div>
                         </div>
-                        <button onClick={() => handleDeleteGroup(grupoId)}
-                          disabled={deletingGroupId === grupoId}
-                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50">
-                          {deletingGroupId === grupoId
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Trash2 className="w-3.5 h-3.5" />}
-                          Cancelar tudo
-                        </button>
+
+                        {/* Period + progress */}
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                          <span>{formatDate(first.data)} → {formatDate(last.data)}</span>
+                          <span className="text-gray-300">|</span>
+                          <span className="font-medium">{futureBookings.length} restantes de {sorted.length}</span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                          <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })()}
