@@ -109,6 +109,7 @@ export interface Quadra {
   telefone?: string | null;
   owner_id?: string;
   ativo?: boolean;
+  mostrarDisponibilidade?: boolean;
   horariosSemanais?: HorariosSemanais;
   datasBloqueadas?: string[];
   quadrasInternas?: SubQuadra[];

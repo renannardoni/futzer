@@ -60,12 +60,14 @@ type ArenaForm = {
   nome: string; descricao: string; telefone: string; precoPorHora: string;
   rua: string; cidade: string; estado: string; cep: string;
   lat: string; lng: string; imagemCapa: string; imagens: string[];
+  mostrarDisponibilidade: boolean;
 };
 
 function fromArena(a: Quadra): ArenaForm {
   return {
     nome: a.nome, descricao: a.descricao,
     telefone: a.telefone ?? "", precoPorHora: a.precoPorHora?.toString() ?? "",
+    mostrarDisponibilidade: a.mostrarDisponibilidade ?? false,
     rua: a.endereco.rua, cidade: a.endereco.cidade,
     estado: a.endereco.estado, cep: a.endereco.cep,
     lat: a.coordenadas.lat.toString(), lng: a.coordenadas.lng.toString(),
@@ -130,6 +132,7 @@ function ArenaSettingsPanel({
         imagens: form.imagens,
         endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
         coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
+        mostrarDisponibilidade: form.mostrarDisponibilidade,
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = await updateQuadra(arena.id, payload as any);
@@ -175,6 +178,24 @@ function ArenaSettingsPanel({
                 <input type="number" min="0" step="0.01" value={form.precoPorHora} onChange={set("precoPorHora")} placeholder="Ex: 120.00" className={inp} />
               </div>
             </div>
+          </section>
+
+          {/* Disponibilidade pública */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Site Público</h3>
+            <label className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Mostrar disponibilidade no site</p>
+                <p className="text-xs text-gray-400 mt-0.5">Visitantes verão os horários disponíveis e poderão contatar via WhatsApp</p>
+              </div>
+              <div className="relative shrink-0 ml-3">
+                <input type="checkbox" checked={form.mostrarDisponibilidade}
+                  onChange={e => setForm(prev => ({ ...prev, mostrarDisponibilidade: e.target.checked }))}
+                  className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors" />
+                <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow peer-checked:translate-x-5 transition-transform" />
+              </div>
+            </label>
           </section>
 
           {/* Endereço */}
@@ -399,7 +420,7 @@ function CourtEditPanel({
 // ── New arena form ────────────────────────────────────────────────────────────
 
 const EMPTY_ARENA: ArenaForm = {
-  nome: "", descricao: "", telefone: "", precoPorHora: "",
+  nome: "", descricao: "", telefone: "", precoPorHora: "", mostrarDisponibilidade: false,
   rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "", imagens: [],
 };
 
