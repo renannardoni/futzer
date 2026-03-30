@@ -976,13 +976,42 @@ function AgendaTabs({
               const l = formatDateLabel(weekDates[6]);
               return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
             })();
-            // Collect slots for the selected court only
-            const allHoursSet = new Set<string>();
+            // Collect slots for the selected court — in 30 min increments
+            const allSlotsSet = new Set<string>();
             weekDates.forEach(date => {
               const dk = getDayKey(date);
-              (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allHoursSet.add(s));
+              (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allSlotsSet.add(s));
             });
-            const allHours = Array.from(allHoursSet).sort();
+            // Filter to 30 min grid: keep only :00 and :30 slots
+            const allSlots30 = Array.from(allSlotsSet)
+              .filter(s => s.endsWith(":00") || s.endsWith(":30"))
+              .sort();
+
+            // Pre-compute which cells to skip (spanned by a booking above)
+            // Key: `${date}_${slot}` → true if this cell is consumed by a rowSpan above
+            const spannedCells = new Set<string>();
+            const bookingAtStart = new Map<string, typeof allBookings[0]>();
+
+            for (const date of weekDates) {
+              const dateBookings = allBookings.filter(b => b.quadra_id === c.id && b.data === date);
+              for (const b of dateBookings) {
+                const dur = b.duracao ?? 60;
+                const spanRows = Math.max(1, Math.floor(dur / 30));
+                // Find the 30-min row this booking starts on
+                const startSlot = b.hora_inicio;
+                // Round down to nearest :00 or :30
+                const [hh, mm] = startSlot.split(":").map(Number);
+                const rounded = mm < 30 ? `${String(hh).padStart(2,"0")}:00` : `${String(hh).padStart(2,"0")}:30`;
+                bookingAtStart.set(`${date}_${rounded}`, b);
+                // Mark subsequent rows as spanned
+                const startMin = hh * 60 + (mm < 30 ? 0 : 30);
+                for (let i = 1; i < spanRows; i++) {
+                  const t = startMin + i * 30;
+                  const spanSlot = `${String(Math.floor(t / 60)).padStart(2,"0")}:${String(t % 60).padStart(2,"0")}`;
+                  spannedCells.add(`${date}_${spanSlot}`);
+                }
+              }
+            }
 
             return (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -1007,19 +1036,23 @@ function AgendaTabs({
                       </tr>
                     </thead>
                     <tbody>
-                      {allHours.map(slot => (
+                      {allSlots30.map(slot => (
                         <tr key={slot} className="border-t border-gray-100 hover:bg-gray-50/50">
                           <td className="px-2 py-1 font-mono font-semibold text-gray-400 sticky left-0 bg-white border-r border-gray-100">
                             {slot}
                           </td>
                           {weekDates.map(date => {
+                            const cellKey = `${date}_${slot}`;
+
+                            // Skip if this cell is consumed by a rowSpan above
+                            if (spannedCells.has(cellKey)) return null;
+
                             const dk = getDayKey(date);
                             const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
                             const isUnavailable = !courtSlots.includes(slot);
-                            const booking = allBookings.find(b => {
-                              if (b.quadra_id !== c.id || b.data !== date) return false;
-                              return slotsOcupados(b.hora_inicio, b.duracao ?? 60).includes(slot);
-                            });
+
+                            // Check if a booking starts at this 30-min row
+                            const booking = bookingAtStart.get(cellKey);
                             const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === slot && selectedDate === date;
 
                             if (isUnavailable) {
@@ -1033,15 +1066,20 @@ function AgendaTabs({
                             }
 
                             if (booking) {
+                              const dur = booking.duracao ?? 60;
+                              const spanRows = Math.max(1, Math.floor(dur / 30));
+                              const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               return (
-                                <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
-                                  <div className={`h-8 rounded flex items-center gap-1 px-2 cursor-default group ${
+                                <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
+                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-default group ${
                                     booking.recorrencia ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                                  }`} title={`${booking.nome_cliente}${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
-                                    <span className="truncate text-xs font-medium flex-1">{booking.nome_cliente}</span>
+                                  }`} style={{ minHeight: `${spanRows * 33}px` }}
+                                    title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
+                                    <span className="truncate text-xs font-semibold w-full">{booking.nome_cliente}</span>
+                                    <span className="text-[10px] opacity-70">{booking.hora_inicio} · {duracaoLabel}</span>
                                     <button onClick={() => handleDeleteBooking(booking.id)}
                                       disabled={deletingBookingId === booking.id}
-                                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 shrink-0">
+                                      className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 p-0.5 hover:text-red-600">
                                       {deletingBookingId === booking.id
                                         ? <Loader2 className="w-3 h-3 animate-spin" />
                                         : <X className="w-3 h-3" />}
@@ -1049,6 +1087,16 @@ function AgendaTabs({
                                   </div>
                                 </td>
                               );
+                            }
+
+                            // Check if this slot is occupied by a booking but not the start (shouldn't happen since we handle spannedCells, but fallback)
+                            const occupyingBooking = allBookings.find(b => {
+                              if (b.quadra_id !== c.id || b.data !== date) return false;
+                              return slotsOcupados(b.hora_inicio, b.duracao ?? 60).includes(slot);
+                            });
+                            if (occupyingBooking && !booking) {
+                              // Already handled by rowSpan, skip
+                              return null;
                             }
 
                             if (isEditing) {

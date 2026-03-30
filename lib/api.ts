@@ -119,7 +119,6 @@ export function generateAllSlots(startHour = 6, endHour = 23): string[] {
 }
 
 export const DURACAO_OPTIONS = [
-  { value: 15, label: "15 min" },
   { value: 30, label: "30 min" },
   { value: 45, label: "45 min" },
   { value: 60, label: "1h" },
