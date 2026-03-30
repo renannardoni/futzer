@@ -48,7 +48,7 @@ export interface Coordenadas {
 }
 
 export interface HorarioDia {
-  slots: number[];  // horas disponíveis ex: [8, 9, 14, 15]
+  slots: string[];  // horários disponíveis ex: ["08:00", "08:15", "08:30"]
 }
 
 export interface HorariosSemanais {
@@ -85,13 +85,48 @@ export interface SubQuadra {
 export interface Reserva {
   id: string;
   quadra_id: string;
-  data: string;   // "2026-03-08"
-  hora: number;   // 9
+  data: string;        // "2026-03-08"
+  hora_inicio: string; // "08:00" (formato HH:MM)
+  duracao: number;     // duração em minutos (múltiplo de 15, default 60)
   nome_cliente: string;
   telefone?: string;
   recorrencia?: string | null;          // "semanal" | "quinzenal" | "mensal"
   recorrencia_grupo_id?: string | null; // UUID para agrupar reservas recorrentes
 }
+
+// Gera os slots de 15 min ocupados por uma reserva
+export function slotsOcupados(horaInicio: string, duracao: number): string[] {
+  const [h, m] = horaInicio.split(":").map(Number);
+  const totalMin = h * 60 + m;
+  const slots: string[] = [];
+  for (let offset = 0; offset < duracao; offset += 15) {
+    const t = totalMin + offset;
+    slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+  }
+  return slots;
+}
+
+// Gera todos os slots de 15 min entre startHour e endHour
+export function generateAllSlots(startHour = 6, endHour = 23): string[] {
+  const slots: string[] = [];
+  for (let h = startHour; h <= endHour; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      if (h === endHour && m > 0) break;
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+  }
+  return slots;
+}
+
+export const DURACAO_OPTIONS = [
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 45, label: "45 min" },
+  { value: 60, label: "1h" },
+  { value: 75, label: "1h15" },
+  { value: 90, label: "1h30" },
+  { value: 120, label: "2h" },
+];
 
 export interface Quadra {
   id: string;
@@ -475,7 +510,8 @@ export async function deleteBooking(arenaId: string, bookingId: string): Promise
 
 export interface RecurrentBookingPayload {
   quadra_id: string;
-  hora: number;
+  hora_inicio: string;  // "08:00"
+  duracao: number;      // minutos
   nome_cliente: string;
   telefone?: string;
   recorrencia: 'semanal' | 'quinzenal' | 'mensal';

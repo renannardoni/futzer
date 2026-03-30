@@ -9,6 +9,7 @@ import {
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
   addBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
+  generateAllSlots, slotsOcupados, DURACAO_OPTIONS,
 
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
   DEFAULT_HORARIOS_SEMANAIS,
@@ -544,11 +545,12 @@ function AgendaTabs({
   onBookingChange: () => Promise<unknown>;
 }) {
   const [tab, setTab] = useState<AgendaTab>("horario");
-  const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: number } | null>(null);
+  const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: string } | null>(null);
   const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
+  const [bookingDuracao, setBookingDuracao] = useState(60);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
-  const [selectedHora, setSelectedHora] = useState<number | null>(null);
+  const [selectedHora, setSelectedHora] = useState<string | null>(null);
 
   // Outlook state
   const [outlookView, setOutlookView] = useState<OutlookView>("semanal");
@@ -565,11 +567,12 @@ function AgendaTabs({
     return d.toISOString().slice(0, 10);
   };
   const [recForm, setRecForm] = useState<{
-    quadra_id: string; hora: string; recorrencia: "semanal" | "quinzenal" | "mensal";
+    quadra_id: string; hora_inicio: string; duracao: number; recorrencia: "semanal" | "quinzenal" | "mensal";
     data_inicio: string; data_fim: string; nome: string; tel: string;
   }>({
     quadra_id: courts[0]?.id ?? "",
-    hora: "",
+    hora_inicio: "",
+    duracao: 60,
     recorrencia: "semanal",
     data_inicio: todayISO(),
     data_fim: defaultEndDate(),
@@ -587,7 +590,7 @@ function AgendaTabs({
   const allBookings = arena.reservas ?? [];
 
   // ── Booking handlers ──
-  async function handleAddBooking(courtId: string, hora: number) {
+  async function handleAddBooking(courtId: string, horaInicio: string, duracao: number = bookingDuracao) {
     if (!bookingForm.nome.trim()) return;
     setBookingLoading(true);
     setBookingError("");
@@ -596,12 +599,13 @@ function AgendaTabs({
       await addBooking(arena.id, {
         quadra_id: courtId,
         data: selectedDate,
-        hora,
+        hora_inicio: horaInicio,
+        duracao,
         nome_cliente: bookingForm.nome.trim(),
         telefone: bookingForm.tel.trim() || undefined,
       });
       await onBookingChange();
-      setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado às ${String(hora).padStart(2, "0")}:00`);
+      setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado às ${horaInicio} (${duracao}min)`);
       setBookingCell(null);
       setBookingForm({ nome: "", tel: "" });
       setTimeout(() => setBookingSuccess(""), 4000);
@@ -620,7 +624,7 @@ function AgendaTabs({
   }
 
   async function handleAddRecurrent() {
-    if (!recForm.nome.trim() || !recForm.hora || !recForm.quadra_id) {
+    if (!recForm.nome.trim() || !recForm.hora_inicio || !recForm.quadra_id) {
       setRecError("Preencha todos os campos obrigatórios");
       return;
     }
@@ -630,7 +634,8 @@ function AgendaTabs({
     try {
       const result = await addRecurrentBooking(arena.id, {
         quadra_id: recForm.quadra_id,
-        hora: parseInt(recForm.hora),
+        hora_inicio: recForm.hora_inicio,
+        duracao: recForm.duracao,
         nome_cliente: recForm.nome.trim(),
         telefone: recForm.tel.trim() || undefined,
         recorrencia: recForm.recorrencia,
@@ -651,7 +656,7 @@ function AgendaTabs({
         setRecSuccess(`✓ ${result.count} horários agendados para ${recForm.nome.trim()}`);
         setTimeout(() => setRecSuccess(""), 6000);
       }
-      setRecForm(p => ({ ...p, nome: "", tel: "", hora: "" }));
+      setRecForm(p => ({ ...p, nome: "", tel: "", hora_inicio: "" }));
     } catch (err: unknown) {
       // Erro total (todos conflitaram ou erro de rede)
       const e = err as Error & { conflitos_datas?: string[]; conflitos?: number };
@@ -677,7 +682,7 @@ function AgendaTabs({
   }
 
   // ── Outlook booking (from calendar click) ──
-  async function handleOutlookBooking(courtId: string, date: string, hora: number) {
+  async function handleOutlookBooking(courtId: string, date: string, horaInicio: string) {
     if (!bookingForm.nome.trim()) return;
     setBookingLoading(true);
     setBookingError("");
@@ -685,7 +690,8 @@ function AgendaTabs({
       await addBooking(arena.id, {
         quadra_id: courtId,
         data: date,
-        hora,
+        hora_inicio: horaInicio,
+        duracao: bookingDuracao,
         nome_cliente: bookingForm.nome.trim(),
         telefone: bookingForm.tel.trim() || undefined,
       });
@@ -736,13 +742,13 @@ function AgendaTabs({
 
       {/* ════════════ TAB: POR HORÁRIO ════════════ */}
       {tab === "horario" && (() => {
-        // Collect all available hours for the selected day across all courts
-        const allSlotsSet = new Set<number>();
+        // Collect all available slots for the selected day across all courts
+        const allSlotsSet = new Set<string>();
         courts.forEach(c => {
           const slots = c.horariosSemanais?.[dayKey]?.slots ?? [];
           slots.forEach(s => allSlotsSet.add(s));
         });
-        const allSlots = Array.from(allSlotsSet).sort((a, b) => a - b);
+        const allSlots = Array.from(allSlotsSet).sort();
         const dayBookings = allBookings.filter(r => r.data === selectedDate);
 
         return (
@@ -760,11 +766,20 @@ function AgendaTabs({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Horário</label>
-                  <select value={selectedHora ?? ""} onChange={e => { setSelectedHora(e.target.value ? parseInt(e.target.value) : null); setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                  <select value={selectedHora ?? ""} onChange={e => { setSelectedHora(e.target.value || null); setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
                     className={`w-32 ${inp}`}>
                     <option value="">Selecione</option>
-                    {allSlots.map(h => (
-                      <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
+                    {allSlots.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
+                  <select value={bookingDuracao} onChange={e => setBookingDuracao(parseInt(e.target.value))}
+                    className={`w-28 ${inp}`}>
+                    {DURACAO_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
                 </div>
@@ -780,13 +795,17 @@ function AgendaTabs({
             {selectedHora !== null && (
               <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
                 <h3 className="text-sm font-semibold text-gray-800">
-                  Quadras — {String(selectedHora).padStart(2, "0")}:00
+                  Quadras — {selectedHora}
                 </h3>
                 <div className="flex flex-wrap gap-3">
                   {courts.map(c => {
                     const courtSlots = c.horariosSemanais?.[dayKey]?.slots ?? [];
-                    const isUnavailable = !courtSlots.includes(selectedHora);
-                    const booking = dayBookings.find(b => b.quadra_id === c.id && b.hora === selectedHora);
+                    const isUnavailable = !selectedHora || !courtSlots.includes(selectedHora);
+                    const booking = dayBookings.find(b => {
+                      if (b.quadra_id !== c.id) return false;
+                      const occupied = slotsOcupados(b.hora_inicio, b.duracao ?? 60);
+                      return occupied.includes(selectedHora!);
+                    });
                     const isSelected = bookingCell?.courtId === c.id && bookingCell?.hora === selectedHora;
 
                     if (isUnavailable) {
@@ -823,7 +842,7 @@ function AgendaTabs({
                     }
 
                     return (
-                      <button key={c.id} onClick={() => { setBookingCell({ courtId: c.id, hora: selectedHora }); setBookingForm({ nome: "", tel: "" }); }}
+                      <button key={c.id} onClick={() => { setBookingCell({ courtId: c.id, hora: selectedHora! }); setBookingForm({ nome: "", tel: "" }); }}
                         className={`w-36 h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${
                           isSelected
                             ? "border-green-500 bg-green-50 ring-2 ring-green-200"
@@ -842,24 +861,24 @@ function AgendaTabs({
             {bookingCell && selectedHora !== null && (
               <div className="bg-white rounded-xl border border-green-200 p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-gray-800">
-                  Reservar {courts.find(c => c.id === bookingCell.courtId)?.nome} — {String(selectedHora).padStart(2, "0")}:00
+                  Reservar {courts.find(c => c.id === bookingCell.courtId)?.nome} — {selectedHora}
                 </h3>
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
                     <input autoFocus value={bookingForm.nome}
                       onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora)}
+                      onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="João Silva" className={`w-full ${inp}`} />
                   </div>
                   <div className="w-40">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Telefone</label>
                     <input value={bookingForm.tel}
                       onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora)}
+                      onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="(11) 99999-9999" className={`w-full ${inp}`} />
                   </div>
-                  <button onClick={() => handleAddBooking(bookingCell.courtId, selectedHora)} disabled={bookingLoading}
+                  <button onClick={() => handleAddBooking(bookingCell.courtId, selectedHora!)} disabled={bookingLoading}
                     className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
                     {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Reservar
@@ -959,12 +978,12 @@ function AgendaTabs({
               return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
             })();
             // Collect slots for the selected court only
-            const allHoursSet = new Set<number>();
+            const allHoursSet = new Set<string>();
             weekDates.forEach(date => {
               const dk = getDayKey(date);
               (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allHoursSet.add(s));
             });
-            const allHours = Array.from(allHoursSet).sort((a, b) => a - b);
+            const allHours = Array.from(allHoursSet).sort();
 
             return (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -989,17 +1008,20 @@ function AgendaTabs({
                       </tr>
                     </thead>
                     <tbody>
-                      {allHours.map(hora => (
-                        <tr key={hora} className="border-t border-gray-100 hover:bg-gray-50/50">
+                      {allHours.map(slot => (
+                        <tr key={slot} className="border-t border-gray-100 hover:bg-gray-50/50">
                           <td className="px-2 py-1 font-mono font-semibold text-gray-400 sticky left-0 bg-white border-r border-gray-100">
-                            {String(hora).padStart(2, "0")}:00
+                            {slot}
                           </td>
                           {weekDates.map(date => {
                             const dk = getDayKey(date);
                             const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
-                            const isUnavailable = !courtSlots.includes(hora);
-                            const booking = allBookings.find(b => b.quadra_id === c.id && b.data === date && b.hora === hora);
-                            const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === hora && selectedDate === date;
+                            const isUnavailable = !courtSlots.includes(slot);
+                            const booking = allBookings.find(b => {
+                              if (b.quadra_id !== c.id || b.data !== date) return false;
+                              return slotsOcupados(b.hora_inicio, b.duracao ?? 60).includes(slot);
+                            });
+                            const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === slot && selectedDate === date;
 
                             if (isUnavailable) {
                               return (
@@ -1036,9 +1058,9 @@ function AgendaTabs({
                                   <div className="flex items-center gap-1">
                                     <input autoFocus placeholder="Nome" value={bookingForm.nome}
                                       onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
-                                      onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, hora)}
+                                      onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, slot)}
                                       className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                    <button onClick={() => handleOutlookBooking(c.id, date, hora)} disabled={bookingLoading}
+                                    <button onClick={() => handleOutlookBooking(c.id, date, slot)} disabled={bookingLoading}
                                       className="p-1 bg-green-600 text-white rounded">
                                       {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                                     </button>
@@ -1055,7 +1077,7 @@ function AgendaTabs({
                               <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
                                 <button onClick={() => {
                                   onDateChange(date);
-                                  setBookingCell({ courtId: c.id, hora });
+                                  setBookingCell({ courtId: c.id, hora: slot });
                                   setBookingForm({ nome: "", tel: "" });
                                 }}
                                   className="w-full h-8 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
@@ -1159,11 +1181,20 @@ function AgendaTabs({
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Horário *</label>
-                <select value={recForm.hora} onChange={e => setRecForm(p => ({ ...p, hora: e.target.value }))}
+                <select value={recForm.hora_inicio} onChange={e => setRecForm(p => ({ ...p, hora_inicio: e.target.value }))}
                   className={`w-full ${inp}`}>
                   <option value="">Selecione</option>
-                  {Array.from({ length: 18 }, (_, i) => i + 6).map(h => (
-                    <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
+                  {generateAllSlots(6, 23).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
+                <select value={recForm.duracao} onChange={e => setRecForm(p => ({ ...p, duracao: parseInt(e.target.value) }))}
+                  className={`w-full ${inp}`}>
+                  {DURACAO_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </div>
@@ -1300,7 +1331,7 @@ function AgendaTabs({
                           </div>
                           <div className="bg-gray-50 rounded-lg px-3 py-2">
                             <p className="text-[10px] text-gray-400 uppercase font-medium">Horário</p>
-                            <p className="text-sm font-semibold text-gray-700">{String(first.hora).padStart(2, "0")}:00</p>
+                            <p className="text-sm font-semibold text-gray-700">{first.hora_inicio} ({first.duracao}min)</p>
                           </div>
                           <div className="bg-gray-50 rounded-lg px-3 py-2">
                             <p className="text-[10px] text-gray-400 uppercase font-medium">Próximo</p>

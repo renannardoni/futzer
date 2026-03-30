@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getQuadraById, type Quadra } from "@/lib/api";
+import { getQuadraById, slotsOcupados, DURACAO_OPTIONS, type Quadra } from "@/lib/api";
 import { MapPin, Clock, Users, Star, Phone, Grid2X2, ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
 
 // ── Helpers ──
@@ -15,13 +15,13 @@ const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 function getDayKey(iso: string) { return DAY_KEYS[new Date(iso + "T12:00:00").getDay()]; }
 
-function buildWhatsAppUrl(phone: string, courtName: string, date: string, hour: number) {
+function buildWhatsAppUrl(phone: string, courtName: string, date: string, horaInicio: string, duracao: number) {
   const d = new Date(date + "T12:00:00");
   const dayStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const hourStr = `${String(hour).padStart(2, "0")}:00`;
   const cleanPhone = phone.replace(/\D/g, "");
   const fullPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
-  const msg = encodeURIComponent(`Olá! Gostaria de reservar a ${courtName} no dia ${dayStr} às ${hourStr}.`);
+  const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === duracao)?.label ?? `${duracao}min`;
+  const msg = encodeURIComponent(`Olá! Gostaria de reservar a ${courtName} no dia ${dayStr} às ${horaInicio} (${duracaoLabel}).`);
   return `https://wa.me/${fullPhone}?text=${msg}`;
 }
 
@@ -31,7 +31,8 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   const [dateOffset, setDateOffset] = useState(0);
   const courts = quadra.quadrasInternas ?? [];
   const [selectedCourtId, setSelectedCourtId] = useState(courts[0]?.id ?? "");
-  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedDuracao, setSelectedDuracao] = useState(60);
 
   const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? courts[0];
   const dayKey = getDayKey(selectedDate);
@@ -123,42 +124,56 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
           {availableSlots.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nenhum horário neste dia</p>
           ) : (
-            <div className="grid grid-cols-3 gap-1.5">
-              {availableSlots.sort((a, b) => a - b).map(hora => {
-                const isBooked = dayReservas.some(r => r.hora === hora);
-                const isSelected = selectedSlot === hora && !isBooked;
+            <>
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Duração</label>
+                <select value={selectedDuracao} onChange={e => setSelectedDuracao(parseInt(e.target.value))}
+                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 dark:text-gray-200">
+                  {DURACAO_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[...availableSlots].sort().map(slot => {
+                  const occupiedByReserva = dayReservas.some(r => {
+                    const occupied = slotsOcupados(r.hora_inicio, r.duracao ?? 60);
+                    return occupied.includes(slot);
+                  });
+                  const isSelected = selectedSlot === slot && !occupiedByReserva;
 
-                if (isBooked) {
+                  if (occupiedByReserva) {
+                    return (
+                      <div key={slot}
+                        className="py-2 rounded-md text-xs text-center cursor-not-allowed relative overflow-hidden border border-gray-200 dark:border-gray-600">
+                        <div className="absolute inset-0" style={{
+                          background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
+                        }} />
+                        <span className="relative text-gray-400 font-medium">{slot}</span>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div key={hora}
-                      className="py-2 rounded-md text-xs text-center cursor-not-allowed relative overflow-hidden border border-gray-200 dark:border-gray-600">
-                      <div className="absolute inset-0" style={{
-                        background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
-                      }} />
-                      <span className="relative text-gray-400 font-medium">{String(hora).padStart(2, "0")}:00</span>
-                    </div>
+                    <button key={slot} onClick={() => setSelectedSlot(slot)}
+                      className={`py-2 rounded-md text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-[#6AB945] text-white border border-[#6AB945]'
+                          : 'border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40'
+                      }`}>
+                      {slot}
+                    </button>
                   );
-                }
-
-                return (
-                  <button key={hora} onClick={() => setSelectedSlot(hora)}
-                    className={`py-2 rounded-md text-xs font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-[#6AB945] text-white border border-[#6AB945]'
-                        : 'border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40'
-                    }`}>
-                    {String(hora).padStart(2, "0")}:00
-                  </button>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
 
       {/* WhatsApp CTA */}
       {selectedSlot !== null && quadra.telefone && selectedCourt && (
-        <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot)}
+        <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot, selectedDuracao)}
           target="_blank" rel="noopener noreferrer"
           className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3.5 text-base font-semibold rounded-lg transition-colors">
           <MessageCircle className="w-5 h-5" />
