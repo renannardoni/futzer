@@ -1,9 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { type HorariosSemanais, DEFAULT_HORARIOS_SEMANAIS, generateAllSlots } from "@/lib/api";
+import { useState, useEffect, useCallback } from "react";
+import { type HorariosSemanais, type HorarioDia, DEFAULT_HORARIOS_SEMANAIS } from "@/lib/api";
+import { TimeInput } from "@/components/time-input";
+import { Copy } from "lucide-react";
 
-const DIAS: { key: keyof HorariosSemanais; label: string }[] = [
+// ── Helpers ──
+
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function fromMinutes(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Gera todos os slots de 15 min entre inicio (inclusive) e fim (exclusive). */
+function generateSlots(inicio: string, fim: string): string[] {
+  const startMin = toMinutes(inicio);
+  const endMin = toMinutes(fim);
+  if (startMin >= endMin) return [];
+  const slots: string[] = [];
+  for (let t = startMin; t < endMin; t += 15) {
+    slots.push(fromMinutes(t));
+  }
+  return slots;
+}
+
+// ── Types ──
+
+interface DayRange {
+  manha: { inicio: string; fim: string };
+  tarde: { inicio: string; fim: string };
+  ativo: boolean;
+}
+
+type DayKey = keyof HorariosSemanais;
+
+const DIAS: { key: DayKey; label: string }[] = [
   { key: "seg", label: "Seg" },
   { key: "ter", label: "Ter" },
   { key: "qua", label: "Qua" },
@@ -13,10 +50,45 @@ const DIAS: { key: keyof HorariosSemanais; label: string }[] = [
   { key: "dom", label: "Dom" },
 ];
 
-const ALL_SLOTS = generateAllSlots(6, 23); // "06:00" .. "23:00"
+const DEFAULT_RANGE: DayRange = {
+  manha: { inicio: "08:00", fim: "12:00" },
+  tarde: { inicio: "14:00", fim: "22:00" },
+  ativo: false,
+};
 
-// Agrupar slots por hora para visualização compacta
-const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6..23
+// ── Detectar ranges a partir de slots existentes ──
+
+function detectRangesFromSlots(slots: string[]): DayRange {
+  if (!slots || slots.length === 0) return { ...DEFAULT_RANGE, ativo: false };
+
+  const sorted = [...slots].sort();
+  const manhaSlots = sorted.filter(s => toMinutes(s) < 12 * 60);
+  const tardeSlots = sorted.filter(s => toMinutes(s) >= 12 * 60);
+
+  const rangeFrom = (arr: string[], fallbackInicio: string, fallbackFim: string) => {
+    if (arr.length === 0) return { inicio: fallbackInicio, fim: fallbackFim };
+    const first = arr[0];
+    const lastMin = toMinutes(arr[arr.length - 1]) + 15; // fim é exclusive
+    return { inicio: first, fim: fromMinutes(lastMin) };
+  };
+
+  return {
+    manha: rangeFrom(manhaSlots, "08:00", "12:00"),
+    tarde: rangeFrom(tardeSlots, "14:00", "22:00"),
+    ativo: true,
+  };
+}
+
+// ── Gerar slots a partir dos ranges ──
+
+function slotsFromRanges(range: DayRange): string[] {
+  if (!range.ativo) return [];
+  const manha = generateSlots(range.manha.inicio, range.manha.fim);
+  const tarde = generateSlots(range.tarde.inicio, range.tarde.fim);
+  return [...manha, ...tarde].sort();
+}
+
+// ── Component ──
 
 interface Props {
   horariosSemanais: HorariosSemanais;
@@ -25,183 +97,140 @@ interface Props {
 }
 
 export function HorariosForm({ horariosSemanais, onChange }: Props) {
-  const [horarios, setHorarios] = useState<HorariosSemanais>(
-    horariosSemanais ?? DEFAULT_HORARIOS_SEMANAIS
-  );
-  const [expandedHour, setExpandedHour] = useState<number | null>(null);
-
-  function toggleSlot(dia: keyof HorariosSemanais, slot: string) {
-    const slots = horarios[dia].slots ?? [];
-    const newSlots = slots.includes(slot)
-      ? slots.filter((s) => s !== slot)
-      : [...slots, slot].sort();
-    const updated = { ...horarios, [dia]: { slots: newSlots } };
-    setHorarios(updated);
-    onChange(updated);
-  }
-
-  function toggleHour(dia: keyof HorariosSemanais, hour: number) {
-    const slots = horarios[dia].slots ?? [];
-    const hourSlots = [`${String(hour).padStart(2, "0")}:00`, `${String(hour).padStart(2, "0")}:15`, `${String(hour).padStart(2, "0")}:30`, `${String(hour).padStart(2, "0")}:45`];
-    const allActive = hourSlots.every((s) => slots.includes(s));
-    let newSlots: string[];
-    if (allActive) {
-      newSlots = slots.filter((s) => !hourSlots.includes(s));
-    } else {
-      newSlots = [...new Set([...slots, ...hourSlots])].sort();
+  // Inicializar ranges a partir dos slots existentes
+  const [ranges, setRanges] = useState<Record<DayKey, DayRange>>(() => {
+    const initial: Record<string, DayRange> = {};
+    for (const { key } of DIAS) {
+      const slots = horariosSemanais?.[key]?.slots ?? [];
+      initial[key] = detectRangesFromSlots(slots);
     }
-    const updated = { ...horarios, [dia]: { slots: newSlots } };
-    setHorarios(updated);
-    onChange(updated);
+    return initial as Record<DayKey, DayRange>;
+  });
+
+  const emitChange = useCallback((newRanges: Record<DayKey, DayRange>) => {
+    const horarios: Record<string, HorarioDia> = {};
+    for (const { key } of DIAS) {
+      horarios[key] = { slots: slotsFromRanges(newRanges[key]) };
+    }
+    onChange(horarios as unknown as HorariosSemanais);
+  }, [onChange]);
+
+  function updateDay(key: DayKey, partial: Partial<DayRange>) {
+    setRanges(prev => {
+      const updated = { ...prev, [key]: { ...prev[key], ...partial } };
+      emitChange(updated);
+      return updated;
+    });
   }
 
-  function toggleDia(dia: keyof HorariosSemanais) {
-    const slots = horarios[dia].slots ?? [];
-    const allSelected = slots.length === ALL_SLOTS.length;
-    const updated = { ...horarios, [dia]: { slots: allSelected ? [] : [...ALL_SLOTS] } };
-    setHorarios(updated);
-    onChange(updated);
+  function updateDayPeriod(key: DayKey, period: "manha" | "tarde", field: "inicio" | "fim", value: string) {
+    setRanges(prev => {
+      const updated = {
+        ...prev,
+        [key]: {
+          ...prev[key],
+          [period]: { ...prev[key][period], [field]: value },
+        },
+      };
+      emitChange(updated);
+      return updated;
+    });
   }
 
-  function countActiveInHour(dia: keyof HorariosSemanais, hour: number): number {
-    const slots = horarios[dia].slots ?? [];
-    const prefix = String(hour).padStart(2, "0");
-    return slots.filter((s) => s.startsWith(prefix + ":")).length;
+  function applyToAll(sourceKey: DayKey) {
+    setRanges(prev => {
+      const source = prev[sourceKey];
+      const updated = { ...prev };
+      for (const { key } of DIAS) {
+        updated[key] = { ...source };
+      }
+      emitChange(updated);
+      return updated;
+    });
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="text-xs border-collapse">
-        <thead>
-          <tr>
-            <th className="w-10 text-left text-gray-400 font-normal pb-3 pr-3 sticky left-0 bg-white" />
-            {HOURS.map((h) => (
-              <th key={h} className="text-center text-gray-400 font-normal pb-3 px-0.5 min-w-[34px]">
-                <button
-                  type="button"
-                  onClick={() => setExpandedHour(expandedHour === h ? null : h)}
-                  className="hover:text-gray-600 transition-colors"
-                  title={`Expandir ${h}h`}
-                >
-                  {h}h
-                </button>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {DIAS.map(({ key, label }) => {
-            const slots = horarios[key]?.slots ?? [];
-            const allSelected = slots.length === ALL_SLOTS.length;
-            return (
-              <tr key={key}>
-                <td className="pr-2 py-1 sticky left-0 bg-white">
-                  <button
-                    type="button"
-                    onClick={() => toggleDia(key)}
-                    title={allSelected ? "Limpar dia" : "Selecionar todos"}
-                    className={`text-xs font-semibold w-9 py-1.5 rounded transition-colors ${
-                      allSelected
-                        ? "text-green-700 bg-green-50"
-                        : slots.length > 0
-                        ? "text-green-600"
-                        : "text-gray-400 hover:text-gray-600"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                </td>
-                {HOURS.map((hour) => {
-                  const count = countActiveInHour(key, hour);
-                  const allFour = count === 4;
-                  return (
-                    <td key={hour} className="px-0.5 py-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleHour(key, hour)}
-                        title={`${label} ${hour}h — ${count}/4 slots`}
-                        className={`w-8 h-8 rounded-md text-xs font-medium transition-all relative ${
-                          allFour
-                            ? "bg-green-500 text-white hover:bg-green-600"
-                            : count > 0
-                            ? "bg-green-200 text-green-800 hover:bg-green-300"
-                            : "bg-gray-100 text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        {hour}
-                        {count > 0 && count < 4 && (
-                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-600 text-white text-[9px] rounded-full flex items-center justify-center">
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="hidden sm:grid sm:grid-cols-[80px_1fr_1fr_40px] gap-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1">
+        <div />
+        <div className="text-center">Manhã</div>
+        <div className="text-center">Tarde</div>
+        <div />
+      </div>
 
-      {/* Painel expandido para slots de 15 min */}
-      {expandedHour !== null && (
-        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-700">
-              {expandedHour}h — Slots de 15 min
-            </span>
-            <button
-              type="button"
-              onClick={() => setExpandedHour(null)}
-              className="text-gray-400 hover:text-gray-600 text-xs"
-            >
-              Fechar
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-2 mb-2">
-            {[":00", ":15", ":30", ":45"].map((suffix) => {
-              const slot = `${String(expandedHour).padStart(2, "0")}${suffix}`;
-              return (
-                <div key={slot} className="text-center text-xs font-medium text-gray-500">
-                  {slot}
-                </div>
-              );
-            })}
-          </div>
-          {DIAS.map(({ key, label }) => {
-            const slots = horarios[key]?.slots ?? [];
-            return (
-              <div key={key} className="flex items-center gap-2 mb-1">
-                <span className="text-xs text-gray-500 w-8">{label}</span>
-                <div className="grid grid-cols-4 gap-2 flex-1">
-                  {[":00", ":15", ":30", ":45"].map((suffix) => {
-                    const slot = `${String(expandedHour).padStart(2, "0")}${suffix}`;
-                    const active = slots.includes(slot);
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => toggleSlot(key, slot)}
-                        className={`py-1.5 rounded text-xs font-medium transition-all ${
-                          active
-                            ? "bg-green-500 text-white hover:bg-green-600"
-                            : "bg-white text-gray-400 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
-                </div>
+      {DIAS.map(({ key, label }) => {
+        const day = ranges[key];
+        const slotCount = slotsFromRanges(day).length;
+
+        return (
+          <div
+            key={key}
+            className={`rounded-xl border p-3 transition-colors ${
+              day.ativo
+                ? "border-green-200 bg-green-50/50"
+                : "border-gray-200 bg-gray-50/50"
+            }`}
+          >
+            <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+              {/* Day label + toggle */}
+              <div className="flex items-center gap-2 w-20 shrink-0">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={day.ativo}
+                    onChange={e => updateDay(key, { ativo: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-8 h-4.5 bg-gray-300 peer-checked:bg-green-500 rounded-full transition-colors
+                    after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all
+                    peer-checked:after:translate-x-3.5" />
+                </label>
+                <span className={`text-sm font-semibold ${day.ativo ? "text-green-700" : "text-gray-400"}`}>
+                  {label}
+                </span>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      <p className="text-xs text-gray-400 mt-4">
-        Clique numa hora para ativar/desativar todos os 4 slots. Clique no cabeçalho da hora para expandir e selecionar slots de 15 min individualmente.
+              {/* Ranges — fade when inactive */}
+              <div className={`flex-1 flex items-center gap-3 flex-wrap sm:flex-nowrap transition-opacity ${day.ativo ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+                {/* Manhã */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-amber-600 uppercase w-11 shrink-0">Manhã</span>
+                  <TimeInput value={day.manha.inicio} onChange={v => updateDayPeriod(key, "manha", "inicio", v)} className="w-[72px]" min="05:00" max="12:00" />
+                  <span className="text-gray-400 text-xs">–</span>
+                  <TimeInput value={day.manha.fim} onChange={v => updateDayPeriod(key, "manha", "fim", v)} className="w-[72px]" min="05:00" max="13:00" />
+                </div>
+
+                {/* Tarde */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-medium text-blue-600 uppercase w-11 shrink-0">Tarde</span>
+                  <TimeInput value={day.tarde.inicio} onChange={v => updateDayPeriod(key, "tarde", "inicio", v)} className="w-[72px]" min="12:00" max="23:00" />
+                  <span className="text-gray-400 text-xs">–</span>
+                  <TimeInput value={day.tarde.fim} onChange={v => updateDayPeriod(key, "tarde", "fim", v)} className="w-[72px]" min="12:00" max="23:45" />
+                </div>
+
+                {/* Slot count */}
+                <span className="text-[10px] text-gray-400 whitespace-nowrap hidden lg:inline">
+                  {slotCount > 0 ? `${slotCount} slots` : "—"}
+                </span>
+              </div>
+
+              {/* Apply to all */}
+              <button
+                type="button"
+                onClick={() => applyToAll(key)}
+                title={`Aplicar config de ${label} para todos os dias`}
+                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      <p className="text-xs text-gray-400 mt-2">
+        Configure os horários de manhã e tarde para cada dia. Clique no ícone <Copy className="w-3 h-3 inline" /> para copiar a configuração de um dia para todos.
       </p>
     </div>
   );
