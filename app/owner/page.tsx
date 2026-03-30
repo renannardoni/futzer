@@ -19,6 +19,7 @@ import {
   Settings, Edit2, ChevronRight, ChevronLeft, Phone, User as UserIcon, Check, Clock,
   Calendar, Repeat,
 } from "lucide-react";
+import { TimeInput } from "@/components/time-input";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -766,13 +767,11 @@ function AgendaTabs({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Horário</label>
-                  <select value={selectedHora ?? ""} onChange={e => { setSelectedHora(e.target.value || null); setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
-                    className={`w-32 ${inp}`}>
-                    <option value="">Selecione</option>
-                    {allSlots.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  <TimeInput
+                    value={selectedHora ?? ""}
+                    onChange={val => { setSelectedHora(val || null); setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                    className="w-28"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
@@ -1181,13 +1180,10 @@ function AgendaTabs({
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Horário *</label>
-                <select value={recForm.hora_inicio} onChange={e => setRecForm(p => ({ ...p, hora_inicio: e.target.value }))}
-                  className={`w-full ${inp}`}>
-                  <option value="">Selecione</option>
-                  {generateAllSlots(6, 23).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <TimeInput
+                  value={recForm.hora_inicio}
+                  onChange={val => setRecForm(p => ({ ...p, hora_inicio: val }))}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
