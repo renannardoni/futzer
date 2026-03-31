@@ -15,7 +15,7 @@ import {
   DEFAULT_HORARIOS_SEMANAIS,
 } from "@/lib/api";
 import {
-  Plus, Trash2, Loader2, Save, Upload, MapPin, LogOut, X,
+  Plus, Trash2, Loader2, Save, Upload, MapPin, LogOut, X, Menu,
   Settings, Edit2, ChevronRight, ChevronLeft, Phone, User as UserIcon, Check, Clock,
   Calendar, Repeat,
 } from "lucide-react";
@@ -824,37 +824,32 @@ function AgendaTabs({
         return (
           <div className="space-y-5">
             {/* Step 1: Dia + Horário */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 space-y-4">
               <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-green-600" /> Selecione dia e horário
               </h3>
-              <div className="flex items-center gap-4">
+              <div className="grid grid-cols-3 gap-3 md:flex md:items-center md:gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Dia</label>
                   <input type="date" value={selectedDate} onChange={e => { onDateChange(e.target.value); setSelectedHora(null); setBookingCell(null); }}
-                    className={`w-44 ${inp}`} />
+                    className={`w-full md:w-44 ${inp}`} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Horário</label>
                   <TimeInput
                     value={selectedHora ?? ""}
                     onChange={val => { setSelectedHora(val || null); setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
-                    className="w-28"
+                    className="w-full md:w-28"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
                   <select value={bookingDuracao} onChange={e => setBookingDuracao(parseInt(e.target.value))}
-                    className={`w-28 ${inp}`}>
+                    className={`w-full md:w-28 ${inp}`}>
                     {DURACAO_OPTIONS.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
-                </div>
-                <div className="pt-5">
-                  <span className="text-sm text-gray-400">
-                    {formatDateLabel(selectedDate).dia}, {formatDateLabel(selectedDate).num} {formatDateLabel(selectedDate).mes}
-                  </span>
                 </div>
               </div>
             </div>
@@ -865,7 +860,7 @@ function AgendaTabs({
                 <h3 className="text-sm font-semibold text-gray-800">
                   Quadras — {selectedHora}
                 </h3>
-                <div className="flex flex-wrap gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-3">
                   {courts.map(c => {
                     const courtSlots = c.horariosSemanais?.[dayKey]?.slots ?? [];
                     const isUnavailable = !selectedHora || !courtSlots.includes(selectedHora);
@@ -878,7 +873,7 @@ function AgendaTabs({
 
                     if (isUnavailable) {
                       return (
-                        <div key={c.id} className="relative w-36 h-20 rounded-xl overflow-hidden border border-gray-200 opacity-50 cursor-not-allowed">
+                        <div key={c.id} className="relative w-full md:w-36 h-20 rounded-xl overflow-hidden border border-gray-200 opacity-50 cursor-not-allowed">
                           <div className="absolute inset-0" style={{
                             background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 4px, #e5e7eb 4px, #e5e7eb 8px)",
                           }} />
@@ -892,7 +887,7 @@ function AgendaTabs({
 
                     if (booking) {
                       return (
-                        <div key={c.id} className="relative w-36 h-20 rounded-xl overflow-hidden border border-gray-200">
+                        <div key={c.id} className="relative w-full md:w-36 h-20 rounded-xl overflow-hidden border border-gray-200">
                           <div className="absolute inset-0" style={{
                             background: "repeating-linear-gradient(45deg, #fef3c7, #fef3c7 4px, #fde68a 4px, #fde68a 8px)",
                           }} />
@@ -911,7 +906,7 @@ function AgendaTabs({
 
                     return (
                       <button key={c.id} onClick={() => { setBookingCell({ courtId: c.id, hora: selectedHora! }); setBookingForm({ nome: "", tel: "", valor: "" }); }}
-                        className={`w-36 h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${
+                        className={`w-full md:w-36 h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${
                           isSelected
                             ? "border-green-500 bg-green-50 ring-2 ring-green-200"
                             : "border-green-200 bg-white hover:border-green-400 hover:bg-green-50"
@@ -927,41 +922,43 @@ function AgendaTabs({
 
             {/* Step 3: Form nome + telefone (só aparece após selecionar quadra) */}
             {bookingCell && selectedHora !== null && (
-              <div className="bg-white rounded-xl border border-green-200 p-5 space-y-3">
+              <div className="bg-white rounded-xl border border-green-200 p-4 md:p-5 space-y-3">
                 <h3 className="text-sm font-semibold text-gray-800">
                   Reservar {courts.find(c => c.id === bookingCell.courtId)?.nome} — {selectedHora}
                 </h3>
-                <div className="flex items-end gap-3 flex-wrap">
-                  <div className="flex-1 min-w-[150px]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:items-end gap-3">
+                  <div className="sm:col-span-2 md:flex-1 md:min-w-[150px]">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
                     <input autoFocus value={bookingForm.nome}
                       onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
                       onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="João Silva" className={`w-full ${inp}`} />
                   </div>
-                  <div className="w-40">
+                  <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Telefone</label>
                     <input value={bookingForm.tel}
                       onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
                       onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="(11) 99999-9999" className={`w-full ${inp}`} />
                   </div>
-                  <div className="w-28">
+                  <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
                     <input value={bookingForm.valor}
                       onChange={e => setBookingForm(p => ({ ...p, valor: e.target.value }))}
                       onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="150" type="number" step="0.01" className={`w-full ${inp}`} />
                   </div>
-                  <button onClick={() => handleAddBooking(bookingCell.courtId, selectedHora!)} disabled={bookingLoading}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
-                    {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Reservar
-                  </button>
-                  <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
-                    className="p-2 border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2 sm:col-span-2 md:col-span-1">
+                    <button onClick={() => handleAddBooking(bookingCell.courtId, selectedHora!)} disabled={bookingLoading}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
+                      {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      Reservar
+                    </button>
+                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
+                      className="p-2 border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -991,7 +988,7 @@ function AgendaTabs({
           )}
 
           {/* View toggle + navigation */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
               <button onClick={() => setOutlookView("semanal")}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${outlookView === "semanal" ? "bg-white text-green-700 shadow-sm" : "text-gray-500"}`}>
@@ -1414,7 +1411,7 @@ function AgendaTabs({
       {tab === "recorrente" && (
         <div className="space-y-5">
           {/* Form */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 space-y-4">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
               <Repeat className="w-4 h-4 text-green-600" /> Novo Mensalista
             </h3>
@@ -1430,7 +1427,7 @@ function AgendaTabs({
             )}
             {recSuccess && <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{recSuccess}</p>}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Quadra *</label>
                 <select value={recForm.quadra_id} onChange={e => setRecForm(p => ({ ...p, quadra_id: e.target.value }))}
@@ -1458,7 +1455,7 @@ function AgendaTabs({
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Dias da semana *</label>
-              <div className="flex gap-1.5">
+              <div className="grid grid-cols-7 gap-1">
                 {(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"] as const).map((label, idx) => (
                   <button key={idx} type="button"
                     onClick={() => setRecForm(p => ({
@@ -1467,7 +1464,7 @@ function AgendaTabs({
                         ? p.dias_semana.filter(d => d !== idx)
                         : [...p.dias_semana, idx].sort(),
                     }))}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                    className={`py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
                       recForm.dias_semana.includes(idx)
                         ? "bg-green-600 text-white border-green-600"
                         : "bg-white text-gray-600 border-gray-300"
@@ -1478,15 +1475,13 @@ function AgendaTabs({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">A partir de *</label>
-                <input type="date" value={recForm.data_inicio} onChange={e => setRecForm(p => ({ ...p, data_inicio: e.target.value }))}
-                  className={`w-full ${inp}`} />
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">A partir de *</label>
+              <input type="date" value={recForm.data_inicio} onChange={e => setRecForm(p => ({ ...p, data_inicio: e.target.value }))}
+                className={`w-full ${inp}`} />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
                 <input value={recForm.nome} onChange={e => setRecForm(p => ({ ...p, nome: e.target.value }))}
@@ -1505,7 +1500,7 @@ function AgendaTabs({
             </div>
 
             <button onClick={handleAddRecurrent} disabled={recLoading}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors">
               {recLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
               Agendar Mensalista
             </button>
@@ -1666,6 +1661,7 @@ function Dashboard({ user }: { user: User }) {
   const [isNewArena, setIsNewArena] = useState(false);
   const [addingCourt, setAddingCourt] = useState(false);
   const [courtError, setCourtError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     getMinhasQuadras()
@@ -1729,16 +1725,31 @@ function Dashboard({ user }: { user: User }) {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* ── Mobile sidebar overlay ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ── Left sidebar: arenas ── */}
-      <aside className="w-52 bg-white border-r border-gray-200 flex flex-col shrink-0">
-        <div className="p-4 border-b border-gray-100">
-          <Link href="/" className="text-lg font-black tracking-widest text-green-600">FUTZER</Link>
-          <p className="text-xs text-gray-500 mt-0.5 truncate">{user.nome}</p>
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col shrink-0
+        transform transition-transform duration-200 ease-in-out
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        md:relative md:translate-x-0 md:w-52 md:z-auto
+      `}>
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <Link href="/" className="text-lg font-black tracking-widest text-green-600">FUTZER</Link>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{user.nome}</p>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-1 text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="p-2.5">
           <button
-            onClick={() => { setIsNewArena(true); setSelectedArenaId(null); }}
+            onClick={() => { setIsNewArena(true); setSelectedArenaId(null); setSidebarOpen(false); }}
             className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" /> Nova Arena
@@ -1751,7 +1762,7 @@ function Dashboard({ user }: { user: User }) {
           ) : (
             <div className="space-y-0.5">
               {arenas.map(a => (
-                <button key={a.id} onClick={() => selectArena(a)}
+                <button key={a.id} onClick={() => { selectArena(a); setSidebarOpen(false); }}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${selectedArenaId === a.id && !isNewArena ? "bg-green-50 text-green-800" : "hover:bg-gray-50 text-gray-700"}`}>
                   <p className="text-sm font-medium truncate">{a.nome}</p>
                   <p className="text-xs text-gray-400">{a.endereco?.cidade}, {a.endereco?.estado}</p>
@@ -1785,6 +1796,9 @@ function Dashboard({ user }: { user: User }) {
           />
         ) : !selectedArena ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden self-start mb-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mb-3 text-2xl">⚽</div>
             <h2 className="text-lg font-semibold text-gray-700 mb-1">Selecione uma Arena</h2>
             <p className="text-sm text-gray-400 mb-5">ou crie uma nova na lista ao lado</p>
@@ -1796,25 +1810,30 @@ function Dashboard({ user }: { user: User }) {
         ) : (
           <>
             {/* Arena header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">{selectedArena.nome}</h1>
-                <p className="text-xs text-gray-400">{selectedArena.endereco?.cidade}, {selectedArena.endereco?.estado}</p>
+            <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 flex items-center justify-between shrink-0 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <button onClick={() => setSidebarOpen(true)} className="md:hidden p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg shrink-0">
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-lg font-bold text-gray-900 truncate">{selectedArena.nome}</h1>
+                  <p className="text-xs text-gray-400 truncate">{selectedArena.endereco?.cidade}, {selectedArena.endereco?.estado}</p>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 shrink-0">
                 <button onClick={() => setShowSettings(true)}
-                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors">
-                  <Settings className="w-4 h-4" /> Configurar
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-2 md:px-3 py-1.5 rounded-lg transition-colors">
+                  <Settings className="w-4 h-4" /> <span className="hidden sm:inline">Configurar</span>
                 </button>
                 <button onClick={handleDeleteArena}
-                  className="text-sm text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors">
+                  className="text-sm text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 px-2 md:px-3 py-1.5 rounded-lg transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Courts tabs */}
-            <div className="bg-white border-b border-gray-200 px-6 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
+            <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-2 flex items-center gap-2 overflow-x-auto shrink-0">
               {courts.map(c => (
                 <div key={c.id} className="flex items-center gap-1 shrink-0">
                   <button
@@ -1850,7 +1869,7 @@ function Dashboard({ user }: { user: User }) {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4 md:space-y-5">
               {/* Court edit panel */}
               {editingCourtId && (() => {
                 const c = courts.find(c => c.id === editingCourtId);
