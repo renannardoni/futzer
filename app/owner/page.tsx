@@ -78,8 +78,9 @@ function fromArena(a: Quadra): ArenaForm {
 }
 
 function ArenaSettingsPanel({
-  arena, onSave, onClose,
-}: { arena: Quadra; onSave: (updated: Quadra) => void; onClose: () => void }) {
+  arena, onSave, onDelete, onClose,
+}: { arena: Quadra; onSave: (updated: Quadra) => void; onDelete: () => void; onClose: () => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<ArenaForm>(fromArena(arena));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -288,6 +289,31 @@ function ArenaSettingsPanel({
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          {/* Zona de perigo */}
+          <section className="border border-red-200 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-red-600">Zona de perigo</h3>
+            {!confirmDelete ? (
+              <button onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-3 py-2 rounded-lg transition-colors">
+                <Trash2 className="w-4 h-4" /> Excluir arena
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-red-600 font-medium">Tem certeza? Esta ação é irreversível e apagará todas as quadras, reservas e dados desta arena.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { onDelete(); onClose(); }}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4" /> Sim, excluir
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-4 py-2 rounded-lg transition-colors">
+                    Cancelar
+                  </button>
+                </div>
               </div>
             )}
           </section>
@@ -1715,12 +1741,13 @@ function Dashboard({ user }: { user: User }) {
   }
 
   async function handleDeleteArena() {
-    if (!selectedArena || !confirm(`Excluir arena "${selectedArena.nome}"?`)) return;
+    if (!selectedArena) return;
     await deleteQuadra(selectedArena.id);
     const remaining = arenas.filter(a => a.id !== selectedArena.id);
     setArenas(remaining);
     setSelectedArenaId(remaining[0]?.id ?? null);
     setSelectedCourtId(remaining[0]?.quadrasInternas?.[0]?.id ?? null);
+    setShowSettings(false);
   }
 
   return (
@@ -1825,10 +1852,6 @@ function Dashboard({ user }: { user: User }) {
                   className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-2 md:px-3 py-1.5 rounded-lg transition-colors">
                   <Settings className="w-4 h-4" /> <span className="hidden sm:inline">Configurar</span>
                 </button>
-                <button onClick={handleDeleteArena}
-                  className="text-sm text-gray-400 hover:text-red-500 border border-gray-200 hover:border-red-200 px-2 md:px-3 py-1.5 rounded-lg transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
@@ -1915,6 +1938,7 @@ function Dashboard({ user }: { user: User }) {
         <ArenaSettingsPanel
           arena={selectedArena}
           onSave={updated => setArenas(prev => prev.map(a => a.id === updated.id ? updated : a))}
+          onDelete={handleDeleteArena}
           onClose={() => setShowSettings(false)}
         />
       )}
