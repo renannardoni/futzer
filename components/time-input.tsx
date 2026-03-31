@@ -95,7 +95,7 @@ export function TimeInput({ value, onChange, placeholder = "HH:MM", className = 
         onChange={e => setDisplay(e.target.value)}
         onBlur={() => { if (display) commit(display); }}
         onKeyDown={handleKeyDown}
-        className="w-full pr-7 px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 tabular-nums"
+        className="w-full pr-6 pl-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 tabular-nums"
       />
       <div className="absolute right-1 flex flex-col">
         <button type="button" tabIndex={-1} onClick={() => step(1)}
