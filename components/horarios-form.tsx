@@ -192,21 +192,21 @@ export function HorariosForm({ horariosSemanais, onChange }: Props) {
               </div>
 
               {/* Ranges — fade when inactive */}
-              <div className={`flex-1 flex items-center gap-3 flex-wrap sm:flex-nowrap transition-opacity ${day.ativo ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
+              <div className={`flex-1 flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap transition-opacity ${day.ativo ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
                 {/* Manhã */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium text-amber-600 uppercase w-11 shrink-0">Manhã</span>
-                  <TimeInput value={day.manha.inicio} onChange={v => updateDayPeriod(key, "manha", "inicio", v)} className="w-[80px]" min="05:00" max="12:00" />
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-medium text-amber-600 uppercase w-10 sm:w-11 shrink-0">Manhã</span>
+                  <TimeInput value={day.manha.inicio} onChange={v => updateDayPeriod(key, "manha", "inicio", v)} className="w-[70px] sm:w-[80px]" min="05:00" max="12:00" />
                   <span className="text-gray-400 text-xs">–</span>
-                  <TimeInput value={day.manha.fim} onChange={v => updateDayPeriod(key, "manha", "fim", v)} className="w-[80px]" min="05:00" max="13:00" />
+                  <TimeInput value={day.manha.fim} onChange={v => updateDayPeriod(key, "manha", "fim", v)} className="w-[70px] sm:w-[80px]" min="05:00" max="13:00" />
                 </div>
 
                 {/* Tarde */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium text-blue-600 uppercase w-11 shrink-0">Tarde</span>
-                  <TimeInput value={day.tarde.inicio} onChange={v => updateDayPeriod(key, "tarde", "inicio", v)} className="w-[80px]" min="12:00" max="23:00" />
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-medium text-blue-600 uppercase w-10 sm:w-11 shrink-0">Tarde</span>
+                  <TimeInput value={day.tarde.inicio} onChange={v => updateDayPeriod(key, "tarde", "inicio", v)} className="w-[70px] sm:w-[80px]" min="12:00" max="23:00" />
                   <span className="text-gray-400 text-xs">–</span>
-                  <TimeInput value={day.tarde.fim} onChange={v => updateDayPeriod(key, "tarde", "fim", v)} className="w-[80px]" min="12:00" max="23:45" />
+                  <TimeInput value={day.tarde.fim} onChange={v => updateDayPeriod(key, "tarde", "fim", v)} className="w-[70px] sm:w-[80px]" min="12:00" max="23:45" />
                 </div>
 
                 {/* Slot count */}

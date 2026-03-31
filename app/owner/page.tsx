@@ -150,7 +150,7 @@ function ArenaSettingsPanel({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-[440px] bg-white h-full overflow-y-auto shadow-xl flex flex-col">
+      <div className="w-full md:w-[440px] bg-white h-full overflow-y-auto shadow-xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b shrink-0">
           <h2 className="font-bold text-gray-900">Configurações da Arena</h2>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
@@ -459,10 +459,10 @@ function NewArenaPanel({ onCreated, onCancel }: { onCreated: (a: Quadra) => void
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Nova Arena</h1>
-        <div className="flex gap-2">
+    <div className="max-w-3xl mx-auto p-3 md:p-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6 gap-2">
+        <h1 className="text-lg md:text-xl font-bold text-gray-900">Nova Arena</h1>
+        <div className="flex gap-2 shrink-0">
           <button onClick={onCancel} className="text-sm text-gray-500 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50">Cancelar</button>
           <button onClick={handleSave} disabled={saving}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
@@ -472,12 +472,12 @@ function NewArenaPanel({ onCreated, onCancel }: { onCreated: (a: Quadra) => void
         </div>
       </div>
       {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-4">{error}</p>}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-5 space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Nome da Arena *</label>
           <input value={form.nome} onChange={set("nome")} placeholder="Ex: Arena Premium Sports" className={inp} />
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
           <div className="col-span-1">
             <label className="block text-xs font-medium text-gray-600 mb-1">Cidade *</label>
             <input value={form.cidade} onChange={set("cidade")} placeholder="Campinas" className={inp} />
