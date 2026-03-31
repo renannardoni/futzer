@@ -551,6 +551,7 @@ function AgendaTabs({
   const [bookingDuracao, setBookingDuracao] = useState(60);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
+  const [deleteRecConfirm, setDeleteRecConfirm] = useState<{ bookingId: string; grupoId: string } | null>(null);
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
 
   // Outlook state
@@ -720,7 +721,7 @@ function AgendaTabs({
 
   const tabs: { key: AgendaTab; label: string; icon: React.ReactNode }[] = [
     { key: "horario", label: "Avulso", icon: <Clock className="w-4 h-4" /> },
-    { key: "quadra", label: "Por Quadra", icon: <Calendar className="w-4 h-4" /> },
+    { key: "quadra", label: "Calendário", icon: <Calendar className="w-4 h-4" /> },
     { key: "recorrente", label: "Mensalista", icon: <Repeat className="w-4 h-4" /> },
   ];
 
@@ -1085,21 +1086,55 @@ function AgendaTabs({
                               const dur = booking.duracao ?? 60;
                               const spanRows = Math.max(1, Math.floor(dur / 30));
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
+                              const isRecorrente = !!booking.recorrencia_grupo_id;
+                              const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
                               return (
                                 <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
-                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-default group ${
-                                    booking.recorrencia ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
+                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-default group relative ${
+                                    isRecorrente ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
                                   }`} style={{ minHeight: `${spanRows * 33}px` }}
-                                    title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}`}>
+                                    title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}${booking.valor ? ` - R$${booking.valor}` : ""}`}>
                                     <span className="truncate text-xs font-semibold w-full">{booking.nome_cliente}</span>
                                     <span className="text-[10px] opacity-70">{booking.hora_inicio} · {duracaoLabel}</span>
-                                    <button onClick={() => handleDeleteBooking(booking.id)}
-                                      disabled={deletingBookingId === booking.id}
-                                      className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 p-0.5 hover:text-red-600">
-                                      {deletingBookingId === booking.id
-                                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                                        : <X className="w-3 h-3" />}
-                                    </button>
+                                    {booking.valor && <span className="text-[10px] opacity-70">R${booking.valor}</span>}
+
+                                    {/* Botão X para excluir */}
+                                    {!showingDeleteConfirm && (
+                                      <button onClick={() => {
+                                        if (isRecorrente) {
+                                          setDeleteRecConfirm({ bookingId: booking.id, grupoId: booking.recorrencia_grupo_id! });
+                                        } else {
+                                          handleDeleteBooking(booking.id);
+                                        }
+                                      }}
+                                        disabled={deletingBookingId === booking.id}
+                                        className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 p-0.5 hover:text-red-600 transition-opacity">
+                                        {deletingBookingId === booking.id
+                                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                                          : <Trash2 className="w-3 h-3" />}
+                                      </button>
+                                    )}
+
+                                    {/* Menu de exclusão para recorrente */}
+                                    {showingDeleteConfirm && (
+                                      <div className="absolute inset-0 bg-white/95 rounded-lg flex flex-col items-center justify-center gap-1 p-1 z-10 border border-red-200">
+                                        <span className="text-[10px] font-semibold text-gray-700">Excluir:</span>
+                                        <button onClick={() => { handleDeleteBooking(booking.id); setDeleteRecConfirm(null); }}
+                                          disabled={deletingBookingId === booking.id}
+                                          className="w-full text-[10px] font-medium py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+                                          Só este dia
+                                        </button>
+                                        <button onClick={() => { handleDeleteGroup(deleteRecConfirm.grupoId); setDeleteRecConfirm(null); }}
+                                          disabled={deletingGroupId === deleteRecConfirm.grupoId}
+                                          className="w-full text-[10px] font-medium py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
+                                          Série toda
+                                        </button>
+                                        <button onClick={() => setDeleteRecConfirm(null)}
+                                          className="w-full text-[10px] text-gray-400 hover:text-gray-600 py-0.5">
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
                               );
