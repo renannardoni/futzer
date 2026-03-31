@@ -1013,19 +1013,15 @@ function AgendaTabs({
               const l = formatDateLabel(weekDates[6]);
               return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
             })();
-            // Collect slots for the selected court — in 30 min increments
+            // Collect slots for the selected court — in 15 min increments
             const allSlotsSet = new Set<string>();
             weekDates.forEach(date => {
               const dk = getDayKey(date);
               (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allSlotsSet.add(s));
             });
-            // Filter to 30 min grid: keep only :00 and :30 slots
-            const allSlots30 = Array.from(allSlotsSet)
-              .filter(s => s.endsWith(":00") || s.endsWith(":30"))
-              .sort();
+            const allSlots15 = Array.from(allSlotsSet).sort();
 
             // Pre-compute which cells to skip (spanned by a booking above)
-            // Key: `${date}_${slot}` → true if this cell is consumed by a rowSpan above
             const spannedCells = new Set<string>();
             const bookingAtStart = new Map<string, typeof allBookings[0]>();
 
@@ -1033,17 +1029,13 @@ function AgendaTabs({
               const dateBookings = allBookings.filter(b => b.quadra_id === c.id && b.data === date);
               for (const b of dateBookings) {
                 const dur = b.duracao ?? 60;
-                const spanRows = Math.max(1, Math.floor(dur / 30));
-                // Find the 30-min row this booking starts on
-                const startSlot = b.hora_inicio;
-                // Round down to nearest :00 or :30
-                const [hh, mm] = startSlot.split(":").map(Number);
-                const rounded = mm < 30 ? `${String(hh).padStart(2,"0")}:00` : `${String(hh).padStart(2,"0")}:30`;
-                bookingAtStart.set(`${date}_${rounded}`, b);
-                // Mark subsequent rows as spanned
-                const startMin = hh * 60 + (mm < 30 ? 0 : 30);
+                const spanRows = Math.max(1, Math.floor(dur / 15));
+                bookingAtStart.set(`${date}_${b.hora_inicio}`, b);
+                // Mark subsequent 15-min rows as spanned
+                const [hh, mm] = b.hora_inicio.split(":").map(Number);
+                const startMin = hh * 60 + mm;
                 for (let i = 1; i < spanRows; i++) {
-                  const t = startMin + i * 30;
+                  const t = startMin + i * 15;
                   const spanSlot = `${String(Math.floor(t / 60)).padStart(2,"0")}:${String(t % 60).padStart(2,"0")}`;
                   spannedCells.add(`${date}_${spanSlot}`);
                 }
@@ -1073,10 +1065,14 @@ function AgendaTabs({
                       </tr>
                     </thead>
                     <tbody>
-                      {allSlots30.map(slot => (
-                        <tr key={slot} className="border-t border-gray-100 hover:bg-gray-50/50">
-                          <td className="px-2 py-1 font-mono font-semibold text-gray-400 sticky left-0 bg-white border-r border-gray-100">
-                            {slot}
+                      {allSlots15.map(slot => {
+                        const isHour = slot.endsWith(":00");
+                        const isHalf = slot.endsWith(":30");
+                        const isMain = isHour || isHalf;
+                        return (
+                        <tr key={slot} className={`hover:bg-gray-50/50 ${isHour ? "border-t border-gray-200" : isHalf ? "border-t border-gray-100" : "border-t border-gray-50"}`}>
+                          <td className={`px-2 font-mono sticky left-0 bg-white border-r border-gray-100 ${isMain ? "py-1 font-semibold text-gray-400" : "py-0.5 text-gray-200"}`}>
+                            {isMain ? slot : ""}
                           </td>
                           {weekDates.map(date => {
                             const cellKey = `${date}_${slot}`;
@@ -1095,7 +1091,7 @@ function AgendaTabs({
                             if (isUnavailable) {
                               return (
                                 <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
-                                  <div className="h-8 rounded" style={{
+                                  <div className="h-5 rounded" style={{
                                     background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
                                   }} />
                                 </td>
@@ -1104,7 +1100,7 @@ function AgendaTabs({
 
                             if (booking) {
                               const dur = booking.duracao ?? 60;
-                              const spanRows = Math.max(1, Math.floor(dur / 30));
+                              const spanRows = Math.max(1, Math.floor(dur / 15));
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
@@ -1113,7 +1109,7 @@ function AgendaTabs({
                               if (isEditingThis) {
                                 return (
                                   <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
-                                    <div className="h-full rounded-lg flex flex-col gap-1 p-1.5 bg-white border-2 border-green-400" style={{ minHeight: `${spanRows * 33}px` }}>
+                                    <div className="h-full rounded-lg flex flex-col gap-1 p-1.5 bg-white border-2 border-green-400" style={{ minHeight: `${spanRows * 24}px` }}>
                                       <input autoFocus value={editForm.nome}
                                         onChange={e => setEditForm(p => ({ ...p, nome: e.target.value }))}
                                         onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
@@ -1144,7 +1140,7 @@ function AgendaTabs({
                                 <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
                                   <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-pointer group relative ${
                                     isRecorrente ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                                  }`} style={{ minHeight: `${spanRows * 33}px` }}
+                                  }`} style={{ minHeight: `${spanRows * 24}px` }}
                                     onClick={() => {
                                       setEditingBooking(booking);
                                       setEditForm({ nome: booking.nome_cliente, tel: booking.telefone ?? "", valor: booking.valor?.toString() ?? "" });
@@ -1248,12 +1244,13 @@ function AgendaTabs({
                                   setBookingCell({ courtId: c.id, hora: slot });
                                   setBookingForm({ nome: "", tel: "", valor: "" });
                                 }}
-                                  className="w-full h-8 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
+                                  className="w-full h-5 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
                               </td>
                             );
                           })}
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
