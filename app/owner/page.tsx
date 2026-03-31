@@ -828,7 +828,7 @@ function AgendaTabs({
               <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-green-600" /> Selecione dia e horário
               </h3>
-              <div className="grid grid-cols-3 gap-3 md:flex md:items-center md:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:flex md:items-center md:gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Dia</label>
                   <input type="date" value={selectedDate} onChange={e => { onDateChange(e.target.value); setSelectedHora(null); setBookingCell(null); }}
