@@ -125,6 +125,10 @@ export const DURACAO_OPTIONS = [
   { value: 75, label: "1h15" },
   { value: 90, label: "1h30" },
   { value: 120, label: "2h" },
+  { value: 150, label: "2h30" },
+  { value: 180, label: "3h" },
+  { value: 210, label: "3h30" },
+  { value: 240, label: "4h" },
 ];
 
 export interface Quadra {
