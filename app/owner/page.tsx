@@ -1155,7 +1155,10 @@ function AgendaTabs({
                                     <span className="text-[10px] opacity-70">{booking.hora_inicio} · {duracaoLabel}</span>
                                     {booking.valor != null && <span className="text-[10px] opacity-70">R${booking.valor}</span>}
 
-                                    {/* Botão de excluir */}
+                                    {/* Botões de editar/excluir no hover */}
+                                    {!showingDeleteConfirm && (
+                                      <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 absolute top-1 left-1.5 transition-opacity pointer-events-none" />
+                                    )}
                                     {!showingDeleteConfirm && (
                                       <button onClick={(e) => {
                                         e.stopPropagation();
