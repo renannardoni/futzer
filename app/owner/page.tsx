@@ -703,20 +703,33 @@ function AgendaTabs({
       setDragOverCell(null);
       return;
     }
-    setBookingLoading(true);
+    // Optimistic update: mover visualmente antes da API responder
+    const oldData = draggingBooking.data;
+    const oldHora = draggingBooking.hora_inicio;
+    const bookingId = draggingBooking.id;
+    // Atualizar reservas localmente
+    const updatedReservas = (arena.reservas ?? []).map(r =>
+      r.id === bookingId ? { ...r, data: targetDate, hora_inicio: targetSlot } : r
+    );
+    // Forçar re-render imediato via onBookingChange pattern
+    arena.reservas = updatedReservas;
+    setDraggingBooking(null);
+    setDragOverCell(null);
+    // Chamar API em background
     try {
-      await updateBooking(arena.id, draggingBooking.id, {
+      await updateBooking(arena.id, bookingId, {
         data: targetDate,
         hora_inicio: targetSlot,
       });
-      await onBookingChange();
+      await onBookingChange(); // sync com servidor
     } catch (err) {
+      // Reverter optimistic update
+      arena.reservas = (arena.reservas ?? []).map(r =>
+        r.id === bookingId ? { ...r, data: oldData, hora_inicio: oldHora } : r
+      );
       setBookingError(err instanceof Error ? err.message : "Erro ao mover reserva");
       setTimeout(() => setBookingError(""), 5000);
-    } finally {
-      setBookingLoading(false);
-      setDraggingBooking(null);
-      setDragOverCell(null);
+      await onBookingChange(); // re-sync
     }
   }
 
@@ -1104,7 +1117,10 @@ function AgendaTabs({
                             const cellKey = `${date}_${slot}`;
 
                             // Skip if this cell is consumed by a rowSpan above
-                            if (spannedCells.has(cellKey)) return null;
+                            if (spannedCells.has(cellKey)) {
+                              // During drag, skip normally (rowSpan handles it)
+                              return null;
+                            }
 
                             const dk = getDayKey(date);
                             const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
@@ -1163,7 +1179,41 @@ function AgendaTabs({
                               }
 
                               return (
-                                <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
+                                <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top"
+                                  onDragOver={e => {
+                                    if (draggingBooking && draggingBooking.id !== booking.id) {
+                                      e.preventDefault();
+                                      e.dataTransfer.dropEffect = "move";
+                                    } else if (draggingBooking?.id === booking.id) {
+                                      // Allow drop on self to reposition within the slot
+                                      e.preventDefault();
+                                      e.dataTransfer.dropEffect = "move";
+                                      // Calculate which 15-min slot based on Y position
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      const relY = e.clientY - rect.top;
+                                      const slotIndex = Math.floor(relY / (rect.height / spanRows));
+                                      const [hh, mm] = slot.split(":").map(Number);
+                                      const targetMin = hh * 60 + mm + slotIndex * 15;
+                                      const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
+                                      setDragOverCell(`${date}_${targetSlot}`);
+                                    }
+                                  }}
+                                  onDragLeave={() => setDragOverCell(null)}
+                                  onDrop={e => {
+                                    if (!draggingBooking) return;
+                                    e.preventDefault();
+                                    if (draggingBooking.id === booking.id) {
+                                      const rect = e.currentTarget.getBoundingClientRect();
+                                      const relY = e.clientY - rect.top;
+                                      const slotIndex = Math.floor(relY / (rect.height / spanRows));
+                                      const [hh, mm] = slot.split(":").map(Number);
+                                      const targetMin = hh * 60 + mm + slotIndex * 15;
+                                      const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
+                                      handleDropBooking(date, targetSlot);
+                                    } else {
+                                      handleDropBooking(date, slot);
+                                    }
+                                  }}>
                                   <div
                                     draggable
                                     onDragStart={(e) => {
