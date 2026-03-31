@@ -555,6 +555,8 @@ function AgendaTabs({
   const [deleteSerieConfirm, setDeleteSerieConfirm] = useState<string | null>(null); // grupoId aguardando confirmação final
   const [editingBooking, setEditingBooking] = useState<Reserva | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", tel: "", valor: "" });
+  const [draggingBooking, setDraggingBooking] = useState<Reserva | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null); // "date_slot"
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
 
   // Outlook state
@@ -692,6 +694,30 @@ function AgendaTabs({
       await deleteBookingGroup(arena.id, grupoId);
       await onBookingChange();
     } finally { setDeletingGroupId(null); }
+  }
+
+  async function handleDropBooking(targetDate: string, targetSlot: string) {
+    if (!draggingBooking) return;
+    if (draggingBooking.data === targetDate && draggingBooking.hora_inicio === targetSlot) {
+      setDraggingBooking(null);
+      setDragOverCell(null);
+      return;
+    }
+    setBookingLoading(true);
+    try {
+      await updateBooking(arena.id, draggingBooking.id, {
+        data: targetDate,
+        hora_inicio: targetSlot,
+      });
+      await onBookingChange();
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao mover reserva");
+      setTimeout(() => setBookingError(""), 5000);
+    } finally {
+      setBookingLoading(false);
+      setDraggingBooking(null);
+      setDragOverCell(null);
+    }
   }
 
   async function handleSaveEdit() {
@@ -1138,10 +1164,20 @@ function AgendaTabs({
 
                               return (
                                 <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
-                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-pointer group relative ${
+                                  <div
+                                    draggable
+                                    onDragStart={(e) => {
+                                      setDraggingBooking(booking);
+                                      e.dataTransfer.effectAllowed = "move";
+                                      e.dataTransfer.setData("text/plain", booking.id);
+                                    }}
+                                    onDragEnd={() => { setDraggingBooking(null); setDragOverCell(null); }}
+                                    className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-grab active:cursor-grabbing group relative ${
                                     isRecorrente ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
-                                  }`} style={{ minHeight: `${spanRows * 24}px` }}
+                                  } ${draggingBooking?.id === booking.id ? "opacity-50" : ""}`}
+                                    style={{ minHeight: `${spanRows * 24}px` }}
                                     onClick={() => {
+                                      if (draggingBooking) return;
                                       setEditingBooking(booking);
                                       setEditForm({ nome: booking.nome_cliente, tel: booking.telefone ?? "", valor: booking.valor?.toString() ?? "" });
                                       setDeleteRecConfirm(null);
@@ -1237,14 +1273,22 @@ function AgendaTabs({
                               );
                             }
 
+                            const cellDropKey = `${date}_${slot}`;
                             return (
-                              <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
+                              <td key={date} className="px-0.5 py-0.5 border-l border-gray-100"
+                                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverCell(cellDropKey); }}
+                                onDragLeave={() => setDragOverCell(null)}
+                                onDrop={e => { e.preventDefault(); handleDropBooking(date, slot); }}>
                                 <button onClick={() => {
                                   onDateChange(date);
                                   setBookingCell({ courtId: c.id, hora: slot });
                                   setBookingForm({ nome: "", tel: "", valor: "" });
                                 }}
-                                  className="w-full h-5 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
+                                  className={`w-full h-5 rounded border border-dashed transition-colors ${
+                                    dragOverCell === cellDropKey
+                                      ? "border-green-400 bg-green-100"
+                                      : "border-transparent hover:border-green-300 hover:bg-green-50"
+                                  }`} />
                               </td>
                             );
                           })}

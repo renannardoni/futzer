@@ -503,7 +503,7 @@ export async function addBooking(arenaId: string, booking: Omit<Reserva, 'id'>):
   return res.json();
 }
 
-export async function updateBooking(arenaId: string, bookingId: string, data: Partial<Pick<Reserva, 'nome_cliente' | 'telefone' | 'valor' | 'hora_inicio' | 'duracao'>>): Promise<void> {
+export async function updateBooking(arenaId: string, bookingId: string, data: Partial<Pick<Reserva, 'nome_cliente' | 'telefone' | 'valor' | 'hora_inicio' | 'duracao' | 'data'>>): Promise<void> {
   const token = getToken();
   const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/${bookingId}`, {
     method: 'PUT',
