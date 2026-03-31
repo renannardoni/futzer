@@ -562,21 +562,16 @@ function AgendaTabs({
     return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  // Recurrent state
-  const defaultEndDate = () => {
-    const d = new Date(); d.setMonth(d.getMonth() + 6);
-    return d.toISOString().slice(0, 10);
-  };
+  // Mensalista state
   const [recForm, setRecForm] = useState<{
-    quadra_id: string; hora_inicio: string; duracao: number; recorrencia: "semanal" | "quinzenal" | "mensal";
-    data_inicio: string; data_fim: string; nome: string; tel: string;
+    quadra_id: string; hora_inicio: string; duracao: number; dias_semana: number[];
+    data_inicio: string; nome: string; tel: string;
   }>({
     quadra_id: courts[0]?.id ?? "",
     hora_inicio: "",
     duracao: 60,
-    recorrencia: "semanal",
+    dias_semana: [],
     data_inicio: todayISO(),
-    data_fim: defaultEndDate(),
     nome: "",
     tel: "",
   });
@@ -629,19 +624,29 @@ function AgendaTabs({
       setRecError("Preencha todos os campos obrigatórios");
       return;
     }
+    if (recForm.dias_semana.length === 0) {
+      setRecError("Selecione pelo menos um dia da semana");
+      return;
+    }
     setRecLoading(true);
     setRecError("");
     setRecSuccess("");
     try {
+      // data_fim = 1 ano a partir do início
+      const startDate = new Date(recForm.data_inicio + "T12:00:00");
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      const dataFim = endDate.toISOString().slice(0, 10);
+
       const result = await addRecurrentBooking(arena.id, {
         quadra_id: recForm.quadra_id,
         hora_inicio: recForm.hora_inicio,
         duracao: recForm.duracao,
         nome_cliente: recForm.nome.trim(),
         telefone: recForm.tel.trim() || undefined,
-        recorrencia: recForm.recorrencia,
+        dias_semana: recForm.dias_semana,
         data_inicio: recForm.data_inicio,
-        data_fim: recForm.data_fim,
+        data_fim: dataFim,
       });
       await onBookingChange();
 
@@ -712,7 +717,7 @@ function AgendaTabs({
   const tabs: { key: AgendaTab; label: string; icon: React.ReactNode }[] = [
     { key: "horario", label: "Avulso", icon: <Clock className="w-4 h-4" /> },
     { key: "quadra", label: "Por Quadra", icon: <Calendar className="w-4 h-4" /> },
-    { key: "recorrente", label: "Recorrente", icon: <Repeat className="w-4 h-4" /> },
+    { key: "recorrente", label: "Mensalista", icon: <Repeat className="w-4 h-4" /> },
   ];
 
   return (
@@ -1204,7 +1209,7 @@ function AgendaTabs({
           {/* Form */}
           <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <Repeat className="w-4 h-4 text-green-600" /> Novo Agendamento Recorrente
+              <Repeat className="w-4 h-4 text-green-600" /> Novo Mensalista
             </h3>
 
             {recError && (
@@ -1244,32 +1249,32 @@ function AgendaTabs({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Recorrência *</label>
-                <div className="flex gap-2">
-                  {([["semanal", "Semanal"], ["quinzenal", "Quinzenal"], ["mensal", "Mensal"]] as const).map(([val, label]) => (
-                    <button key={val} onClick={() => setRecForm(p => ({ ...p, recorrencia: val }))}
-                      className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                        recForm.recorrencia === val ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-600 border-gray-300"
-                      }`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">A partir de *</label>
-                <input type="date" value={recForm.data_inicio} onChange={e => setRecForm(p => ({ ...p, data_inicio: e.target.value }))}
-                  className={`w-full ${inp}`} />
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dias da semana *</label>
+              <div className="flex gap-1.5">
+                {(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"] as const).map((label, idx) => (
+                  <button key={idx} type="button"
+                    onClick={() => setRecForm(p => ({
+                      ...p,
+                      dias_semana: p.dias_semana.includes(idx)
+                        ? p.dias_semana.filter(d => d !== idx)
+                        : [...p.dias_semana, idx].sort(),
+                    }))}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                      recForm.dias_semana.includes(idx)
+                        ? "bg-green-600 text-white border-green-600"
+                        : "bg-white text-gray-600 border-gray-300"
+                    }`}>
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 mb-1">
+            <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Recorrente até *</label>
-                <input type="date" value={recForm.data_fim} onChange={e => setRecForm(p => ({ ...p, data_fim: e.target.value }))}
-                  min={recForm.data_inicio}
+                <label className="block text-xs font-medium text-gray-600 mb-1">A partir de *</label>
+                <input type="date" value={recForm.data_inicio} onChange={e => setRecForm(p => ({ ...p, data_inicio: e.target.value }))}
                   className={`w-full ${inp}`} />
               </div>
             </div>
@@ -1290,7 +1295,7 @@ function AgendaTabs({
             <button onClick={handleAddRecurrent} disabled={recLoading}
               className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
               {recLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
-              Agendar Recorrente
+              Agendar Mensalista
             </button>
           </div>
 
@@ -1308,12 +1313,12 @@ function AgendaTabs({
             if (groups.size === 0) return (
               <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300 p-8 text-center">
                 <Repeat className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">Nenhum agendamento recorrente</p>
+                <p className="text-sm text-gray-400">Nenhum mensalista cadastrado</p>
               </div>
             );
 
             const today = todayISO();
-            const recLabels: Record<string, string> = { semanal: "Semanal", quinzenal: "Quinzenal", mensal: "Mensal" };
+            const recLabels: Record<string, string> = { mensalista: "Mensalista", semanal: "Semanal", quinzenal: "Quinzenal", mensal: "Mensal" };
             const DAY_NAMES_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
             return (
@@ -1321,7 +1326,7 @@ function AgendaTabs({
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                     <Repeat className="w-4 h-4 text-green-600" />
-                    Recorrentes Ativos ({groups.size})
+                    Mensalistas Ativos ({groups.size})
                   </h3>
                 </div>
                 {Array.from(groups.entries()).map(([grupoId, { bookings, recorrencia }]) => {

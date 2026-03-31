@@ -513,9 +513,9 @@ export interface RecurrentBookingPayload {
   duracao: number;      // minutos
   nome_cliente: string;
   telefone?: string;
-  recorrencia: 'semanal' | 'quinzenal' | 'mensal';
+  dias_semana: number[]; // 0=seg, 1=ter, ..., 6=dom
   data_inicio: string; // "2026-03-22"
-  data_fim?: string; // "2026-09-22"
+  data_fim?: string; // "2027-03-22" (default 1 ano)
 }
 
 export async function addRecurrentBooking(
