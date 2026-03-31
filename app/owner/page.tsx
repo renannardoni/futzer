@@ -547,7 +547,7 @@ function AgendaTabs({
 }) {
   const [tab, setTab] = useState<AgendaTab>("horario");
   const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: string } | null>(null);
-  const [bookingForm, setBookingForm] = useState({ nome: "", tel: "" });
+  const [bookingForm, setBookingForm] = useState({ nome: "", tel: "", valor: "" });
   const [bookingDuracao, setBookingDuracao] = useState(60);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
@@ -565,7 +565,7 @@ function AgendaTabs({
   // Mensalista state
   const [recForm, setRecForm] = useState<{
     quadra_id: string; hora_inicio: string; duracao: number; dias_semana: number[];
-    data_inicio: string; nome: string; tel: string;
+    data_inicio: string; nome: string; tel: string; valor: string;
   }>({
     quadra_id: courts[0]?.id ?? "",
     hora_inicio: "",
@@ -574,6 +574,7 @@ function AgendaTabs({
     data_inicio: todayISO(),
     nome: "",
     tel: "",
+    valor: "",
   });
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState("");
@@ -599,11 +600,12 @@ function AgendaTabs({
         duracao,
         nome_cliente: bookingForm.nome.trim(),
         telefone: bookingForm.tel.trim() || undefined,
+        valor: bookingForm.valor ? parseFloat(bookingForm.valor) : undefined,
       });
       await onBookingChange();
       setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado às ${horaInicio} (${duracao}min)`);
       setBookingCell(null);
-      setBookingForm({ nome: "", tel: "" });
+      setBookingForm({ nome: "", tel: "", valor: "" });
       setTimeout(() => setBookingSuccess(""), 4000);
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : "Erro ao reservar");
@@ -644,6 +646,7 @@ function AgendaTabs({
         duracao: recForm.duracao,
         nome_cliente: recForm.nome.trim(),
         telefone: recForm.tel.trim() || undefined,
+        valor: recForm.valor ? parseFloat(recForm.valor) : undefined,
         dias_semana: recForm.dias_semana,
         data_inicio: recForm.data_inicio,
         data_fim: dataFim,
@@ -700,11 +703,12 @@ function AgendaTabs({
         duracao: bookingDuracao,
         nome_cliente: bookingForm.nome.trim(),
         telefone: bookingForm.tel.trim() || undefined,
+        valor: bookingForm.valor ? parseFloat(bookingForm.valor) : undefined,
       });
       await onBookingChange();
       setBookingSuccess(`✓ ${bookingForm.nome.trim()} reservado`);
       setBookingCell(null);
-      setBookingForm({ nome: "", tel: "" });
+      setBookingForm({ nome: "", tel: "", valor: "" });
       setTimeout(() => setBookingSuccess(""), 4000);
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : "Erro ao reservar");
@@ -774,7 +778,7 @@ function AgendaTabs({
                   <label className="block text-xs font-medium text-gray-600 mb-1">Horário</label>
                   <TimeInput
                     value={selectedHora ?? ""}
-                    onChange={val => { setSelectedHora(val || null); setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                    onChange={val => { setSelectedHora(val || null); setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
                     className="w-28"
                   />
                 </div>
@@ -846,7 +850,7 @@ function AgendaTabs({
                     }
 
                     return (
-                      <button key={c.id} onClick={() => { setBookingCell({ courtId: c.id, hora: selectedHora! }); setBookingForm({ nome: "", tel: "" }); }}
+                      <button key={c.id} onClick={() => { setBookingCell({ courtId: c.id, hora: selectedHora! }); setBookingForm({ nome: "", tel: "", valor: "" }); }}
                         className={`w-36 h-20 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${
                           isSelected
                             ? "border-green-500 bg-green-50 ring-2 ring-green-200"
@@ -867,8 +871,8 @@ function AgendaTabs({
                 <h3 className="text-sm font-semibold text-gray-800">
                   Reservar {courts.find(c => c.id === bookingCell.courtId)?.nome} — {selectedHora}
                 </h3>
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
+                <div className="flex items-end gap-3 flex-wrap">
+                  <div className="flex-1 min-w-[150px]">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
                     <input autoFocus value={bookingForm.nome}
                       onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
@@ -882,12 +886,19 @@ function AgendaTabs({
                       onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
                       placeholder="(11) 99999-9999" className={`w-full ${inp}`} />
                   </div>
+                  <div className="w-28">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
+                    <input value={bookingForm.valor}
+                      onChange={e => setBookingForm(p => ({ ...p, valor: e.target.value }))}
+                      onKeyDown={e => e.key === "Enter" && handleAddBooking(bookingCell.courtId, selectedHora!)}
+                      placeholder="150" type="number" step="0.01" className={`w-full ${inp}`} />
+                  </div>
                   <button onClick={() => handleAddBooking(bookingCell.courtId, selectedHora!)} disabled={bookingLoading}
                     className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg">
                     {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Reservar
                   </button>
-                  <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                  <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
                     className="p-2 border border-gray-200 rounded-lg text-gray-400 hover:text-gray-600">
                     <X className="w-4 h-4" />
                   </button>
@@ -1107,19 +1118,28 @@ function AgendaTabs({
                             if (isEditing) {
                               return (
                                 <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
-                                  <div className="flex items-center gap-1">
-                                    <input autoFocus placeholder="Nome" value={bookingForm.nome}
+                                  <div className="flex flex-col gap-1">
+                                    <input autoFocus placeholder="Nome *" value={bookingForm.nome}
                                       onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
                                       onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, slot)}
-                                      className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                      className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                    <input placeholder="Telefone" value={bookingForm.tel}
+                                      onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
+                                      className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                    <div className="flex items-center gap-1">
+                                      <input placeholder="R$" value={bookingForm.valor} type="number" step="0.01"
+                                        onChange={e => setBookingForm(p => ({ ...p, valor: e.target.value }))}
+                                        onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, slot)}
+                                        className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
                                     <button onClick={() => handleOutlookBooking(c.id, date, slot)} disabled={bookingLoading}
                                       className="p-1 bg-green-600 text-white rounded">
                                       {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                                     </button>
-                                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "" }); }}
+                                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
                                       className="p-1 text-gray-400">
                                       <X className="w-3 h-3" />
                                     </button>
+                                    </div>
                                   </div>
                                 </td>
                               );
@@ -1130,7 +1150,7 @@ function AgendaTabs({
                                 <button onClick={() => {
                                   onDateChange(date);
                                   setBookingCell({ courtId: c.id, hora: slot });
-                                  setBookingForm({ nome: "", tel: "" });
+                                  setBookingForm({ nome: "", tel: "", valor: "" });
                                 }}
                                   className="w-full h-8 rounded border border-dashed border-transparent hover:border-green-300 hover:bg-green-50 transition-colors" />
                               </td>
@@ -1279,7 +1299,7 @@ function AgendaTabs({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nome do cliente *</label>
                 <input value={recForm.nome} onChange={e => setRecForm(p => ({ ...p, nome: e.target.value }))}
@@ -1289,6 +1309,11 @@ function AgendaTabs({
                 <label className="block text-xs font-medium text-gray-600 mb-1">Telefone</label>
                 <input value={recForm.tel} onChange={e => setRecForm(p => ({ ...p, tel: e.target.value }))}
                   placeholder="(11) 99999-9999" className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Valor (R$)</label>
+                <input value={recForm.valor} onChange={e => setRecForm(p => ({ ...p, valor: e.target.value }))}
+                  placeholder="150" type="number" step="0.01" className={`w-full ${inp}`} />
               </div>
             </div>
 

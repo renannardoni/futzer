@@ -90,7 +90,8 @@ export interface Reserva {
   duracao: number;     // duração em minutos (múltiplo de 15, default 60)
   nome_cliente: string;
   telefone?: string;
-  recorrencia?: string | null;          // "semanal" | "quinzenal" | "mensal"
+  valor?: number | null;
+  recorrencia?: string | null;          // "mensalista"
   recorrencia_grupo_id?: string | null; // UUID para agrupar reservas recorrentes
 }
 
@@ -517,6 +518,7 @@ export interface RecurrentBookingPayload {
   duracao: number;      // minutos
   nome_cliente: string;
   telefone?: string;
+  valor?: number;
   dias_semana: number[]; // 0=seg, 1=ter, ..., 6=dom
   data_inicio: string; // "2026-03-22"
   data_fim?: string; // "2027-03-22" (default 1 ano)
