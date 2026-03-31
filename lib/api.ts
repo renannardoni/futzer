@@ -503,6 +503,16 @@ export async function addBooking(arenaId: string, booking: Omit<Reserva, 'id'>):
   return res.json();
 }
 
+export async function updateBooking(arenaId: string, bookingId: string, data: Partial<Pick<Reserva, 'nome_cliente' | 'telefone' | 'valor' | 'hora_inicio' | 'duracao'>>): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/${bookingId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro ao atualizar reserva');
+}
+
 export async function deleteBooking(arenaId: string, bookingId: string): Promise<void> {
   const token = getToken();
   const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/${bookingId}`, {

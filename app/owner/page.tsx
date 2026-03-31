@@ -8,7 +8,7 @@ import {
   getMinhasQuadras, createQuadra, updateQuadra, deleteQuadra,
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
-  addBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
+  addBooking, updateBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
   generateAllSlots, slotsOcupados, DURACAO_OPTIONS,
 
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
@@ -552,6 +552,9 @@ function AgendaTabs({
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
   const [deleteRecConfirm, setDeleteRecConfirm] = useState<{ bookingId: string; grupoId: string } | null>(null);
+  const [deleteSerieConfirm, setDeleteSerieConfirm] = useState<string | null>(null); // grupoId aguardando confirmação final
+  const [editingBooking, setEditingBooking] = useState<Reserva | null>(null);
+  const [editForm, setEditForm] = useState({ nome: "", tel: "", valor: "" });
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
 
   // Outlook state
@@ -689,6 +692,23 @@ function AgendaTabs({
       await deleteBookingGroup(arena.id, grupoId);
       await onBookingChange();
     } finally { setDeletingGroupId(null); }
+  }
+
+  async function handleSaveEdit() {
+    if (!editingBooking) return;
+    setBookingLoading(true);
+    try {
+      await updateBooking(arena.id, editingBooking.id, {
+        nome_cliente: editForm.nome.trim(),
+        telefone: editForm.tel.trim() || undefined,
+        valor: editForm.valor ? parseFloat(editForm.valor) : undefined,
+      });
+      await onBookingChange();
+      setEditingBooking(null);
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao salvar");
+      setTimeout(() => setBookingError(""), 5000);
+    } finally { setBookingLoading(false); }
   }
 
   // ── Outlook booking (from calendar click) ──
@@ -1088,19 +1108,57 @@ function AgendaTabs({
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
+                              const isEditingThis = editingBooking?.id === booking.id;
+
+                              if (isEditingThis) {
+                                return (
+                                  <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
+                                    <div className="h-full rounded-lg flex flex-col gap-1 p-1.5 bg-white border-2 border-green-400" style={{ minHeight: `${spanRows * 33}px` }}>
+                                      <input autoFocus value={editForm.nome}
+                                        onChange={e => setEditForm(p => ({ ...p, nome: e.target.value }))}
+                                        onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
+                                        placeholder="Nome *" className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                      <input value={editForm.tel}
+                                        onChange={e => setEditForm(p => ({ ...p, tel: e.target.value }))}
+                                        placeholder="Telefone" className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                      <div className="flex items-center gap-1">
+                                        <input value={editForm.valor} type="number" step="0.01"
+                                          onChange={e => setEditForm(p => ({ ...p, valor: e.target.value }))}
+                                          onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
+                                          placeholder="R$" className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
+                                        <button onClick={handleSaveEdit} disabled={bookingLoading}
+                                          className="p-1 bg-green-600 text-white rounded">
+                                          {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                        </button>
+                                        <button onClick={() => setEditingBooking(null)}
+                                          className="p-1 text-gray-400">
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                );
+                              }
+
                               return (
                                 <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
-                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-default group relative ${
+                                  <div className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-pointer group relative ${
                                     isRecorrente ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
                                   }`} style={{ minHeight: `${spanRows * 33}px` }}
-                                    title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}${booking.valor ? ` - R$${booking.valor}` : ""}`}>
+                                    onClick={() => {
+                                      setEditingBooking(booking);
+                                      setEditForm({ nome: booking.nome_cliente, tel: booking.telefone ?? "", valor: booking.valor?.toString() ?? "" });
+                                      setDeleteRecConfirm(null);
+                                    }}
+                                    title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}${booking.valor ? ` - R$${booking.valor}` : ""}\nClique para editar`}>
                                     <span className="truncate text-xs font-semibold w-full">{booking.nome_cliente}</span>
                                     <span className="text-[10px] opacity-70">{booking.hora_inicio} · {duracaoLabel}</span>
-                                    {booking.valor && <span className="text-[10px] opacity-70">R${booking.valor}</span>}
+                                    {booking.valor != null && <span className="text-[10px] opacity-70">R${booking.valor}</span>}
 
-                                    {/* Botão X para excluir */}
+                                    {/* Botão de excluir */}
                                     {!showingDeleteConfirm && (
-                                      <button onClick={() => {
+                                      <button onClick={(e) => {
+                                        e.stopPropagation();
                                         if (isRecorrente) {
                                           setDeleteRecConfirm({ bookingId: booking.id, grupoId: booking.recorrencia_grupo_id! });
                                         } else {
@@ -1117,15 +1175,15 @@ function AgendaTabs({
 
                                     {/* Menu de exclusão para recorrente */}
                                     {showingDeleteConfirm && (
-                                      <div className="absolute inset-0 bg-white/95 rounded-lg flex flex-col items-center justify-center gap-1 p-1 z-10 border border-red-200">
+                                      <div className="absolute inset-0 bg-white/95 rounded-lg flex flex-col items-center justify-center gap-1 p-1 z-10 border border-red-200"
+                                        onClick={e => e.stopPropagation()}>
                                         <span className="text-[10px] font-semibold text-gray-700">Excluir:</span>
                                         <button onClick={() => { handleDeleteBooking(booking.id); setDeleteRecConfirm(null); }}
                                           disabled={deletingBookingId === booking.id}
                                           className="w-full text-[10px] font-medium py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
                                           Só este dia
                                         </button>
-                                        <button onClick={() => { handleDeleteGroup(deleteRecConfirm.grupoId); setDeleteRecConfirm(null); }}
-                                          disabled={deletingGroupId === deleteRecConfirm.grupoId}
+                                        <button onClick={() => { setDeleteSerieConfirm(deleteRecConfirm.grupoId); setDeleteRecConfirm(null); }}
                                           className="w-full text-[10px] font-medium py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
                                           Série toda
                                         </button>
@@ -1468,6 +1526,33 @@ function AgendaTabs({
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* Modal de confirmação para excluir série toda */}
+      {deleteSerieConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setDeleteSerieConfirm(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-800">Excluir série toda?</h3>
+            <p className="text-sm text-gray-600">
+              Todas as reservas deste mensalista serão excluídas permanentemente. Essa ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteSerieConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={async () => {
+                  const grupoId = deleteSerieConfirm;
+                  setDeleteSerieConfirm(null);
+                  await handleDeleteGroup(grupoId);
+                }}
+                disabled={deletingGroupId === deleteSerieConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors">
+                {deletingGroupId === deleteSerieConfirm ? "Excluindo..." : "Sim, excluir tudo"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
