@@ -293,9 +293,7 @@ function ArenaSettingsPanel({
             )}
           </section>
 
-          {/* Zona de perigo */}
           <section className="border border-red-200 rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-red-600">Zona de perigo</h3>
             {!confirmDelete ? (
               <button onClick={() => setConfirmDelete(true)}
                 className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-3 py-2 rounded-lg transition-colors">
