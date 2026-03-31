@@ -710,7 +710,7 @@ function AgendaTabs({
   const inp = "px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500";
 
   const tabs: { key: AgendaTab; label: string; icon: React.ReactNode }[] = [
-    { key: "horario", label: "Por Horário", icon: <Clock className="w-4 h-4" /> },
+    { key: "horario", label: "Avulso", icon: <Clock className="w-4 h-4" /> },
     { key: "quadra", label: "Por Quadra", icon: <Calendar className="w-4 h-4" /> },
     { key: "recorrente", label: "Recorrente", icon: <Repeat className="w-4 h-4" /> },
   ];
