@@ -179,62 +179,71 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                 </div>
 
                 {/* Timeline vertical */}
-                <div className="max-h-[360px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
                   {sortedSlots.map((slot, idx) => {
                     const isHour = slot.endsWith(":00");
                     const isOccupied = occupiedSet.has(slot);
                     const isInSelectedBlock = selectedBlockSet.has(slot);
                     const isSelectedStart = selectedSlot === slot;
                     const conflict = !isOccupied && wouldConflict(slot);
+                    const clickable = !isOccupied && !conflict;
+
+                    const borderClass = isHour && idx > 0
+                      ? "border-t border-gray-200 dark:border-gray-600"
+                      : idx > 0 ? "border-t border-gray-50 dark:border-gray-700" : "";
+
+                    if (!clickable) {
+                      return (
+                        <div key={slot} className={`flex items-center gap-2 px-3 py-1.5 ${borderClass} ${
+                          isOccupied
+                            ? "bg-gray-50 dark:bg-gray-800"
+                            : "bg-white dark:bg-gray-900 opacity-40"
+                        }`}>
+                          <span className={`w-11 text-xs font-mono shrink-0 ${isHour ? "font-semibold text-gray-400" : "text-gray-300 dark:text-gray-600"}`}>{slot}</span>
+                          {isOccupied ? (
+                            <div className="flex-1 h-5 rounded relative overflow-hidden">
+                              <div className="absolute inset-0" style={{
+                                background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
+                              }} />
+                            </div>
+                          ) : (
+                            <div className="flex-1 h-3 rounded bg-gray-100 dark:bg-gray-800" />
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
-                      <div key={slot}
-                        className={`flex items-center gap-2 px-3 transition-colors ${
-                          isHour && idx > 0 ? "border-t border-gray-200 dark:border-gray-600" : idx > 0 ? "border-t border-gray-100 dark:border-gray-700" : ""
-                        } ${
-                          isOccupied
-                            ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                      <button key={slot} type="button"
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${borderClass} ${
+                          isSelectedStart
+                            ? "bg-green-600 dark:bg-green-700"
                             : isInSelectedBlock
-                              ? "bg-[#6AB945]/15 dark:bg-[#6AB945]/20"
-                              : conflict
-                                ? "bg-white dark:bg-gray-900 opacity-40 cursor-not-allowed"
-                                : "bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer"
-                        }`}
-                        style={{ minHeight: "32px" }}
-                        onClick={() => {
-                          if (!isOccupied && !conflict) setSelectedSlot(slot);
-                        }}>
-                        {/* Hora label */}
-                        <span className={`w-12 text-xs font-mono shrink-0 ${
-                          isHour ? "font-semibold text-gray-700 dark:text-gray-200" : "text-gray-300 dark:text-gray-600"
+                              ? "bg-green-100 dark:bg-green-900/30"
+                              : "bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-900/20"
                         }`}>
-                          {isHour ? slot : slot}
-                        </span>
-
-                        {/* Slot content */}
-                        <div className="flex-1 min-h-[28px] flex items-center">
-                          {isOccupied ? (
-                            <div className="w-full h-6 rounded relative overflow-hidden">
-                              <div className="absolute inset-0" style={{
-                                background: "repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 3px, #d1d5db 3px, #d1d5db 6px)",
-                              }} />
-                              <span className="relative text-[10px] text-gray-400 font-medium px-2 leading-6">Ocupado</span>
-                            </div>
-                          ) : isSelectedStart ? (
-                            <div className="w-full h-6 rounded bg-[#6AB945] flex items-center px-2">
-                              <span className="text-[10px] text-white font-semibold">
-                                {slot} — {DURACAO_OPTIONS.find(o => o.value === selectedDuracao)?.label}
+                        <span className={`w-11 text-xs font-mono shrink-0 ${
+                          isSelectedStart
+                            ? "font-semibold text-white"
+                            : isHour
+                              ? "font-semibold text-gray-700 dark:text-gray-200"
+                              : "text-gray-400 dark:text-gray-500"
+                        }`}>{slot}</span>
+                        <div className="flex-1">
+                          {isSelectedStart ? (
+                            <div className="h-5 rounded flex items-center">
+                              <span className="text-[11px] text-white font-semibold">
+                                {DURACAO_OPTIONS.find(o => o.value === selectedDuracao)?.label}
                               </span>
                             </div>
                           ) : isInSelectedBlock ? (
-                            <div className="w-full h-4 rounded bg-[#6AB945]/30" />
-                          ) : conflict ? (
-                            <div className="w-full h-4 rounded bg-gray-100 dark:bg-gray-800" />
+                            <div className="h-3 rounded bg-green-300/50 dark:bg-green-600/30" />
                           ) : (
-                            <div className="w-full h-4 rounded border border-dashed border-green-200 dark:border-green-800 hover:border-green-400" />
+                            <div className="h-3 rounded border border-dashed border-gray-200 dark:border-gray-700" />
                           )}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
