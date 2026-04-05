@@ -579,6 +579,10 @@ function AgendaTabs({
   const [deleteSerieConfirm, setDeleteSerieConfirm] = useState<string | null>(null); // grupoId aguardando confirmação final
   const [editingBooking, setEditingBooking] = useState<Reserva | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", tel: "", valor: "" });
+  const [bookingModal, setBookingModal] = useState<{
+    courtId: string; courtName: string; date: string; hora: string;
+    mode: "create" | "edit"; booking?: Reserva;
+  } | null>(null);
   const [draggingBooking, setDraggingBooking] = useState<Reserva | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null); // "date_slot"
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
@@ -765,6 +769,7 @@ function AgendaTabs({
         nome_cliente: editForm.nome.trim(),
         telefone: editForm.tel.trim() || undefined,
         valor: editForm.valor ? parseFloat(editForm.valor) : undefined,
+        duracao: bookingDuracao,
       });
       await onBookingChange();
       setEditingBooking(null);
@@ -1149,7 +1154,6 @@ function AgendaTabs({
 
                             // Check if a booking starts at this 30-min row
                             const booking = bookingAtStart.get(cellKey);
-                            const isEditing = bookingCell?.courtId === c.id && bookingCell?.hora === slot && selectedDate === date;
 
                             if (isUnavailable) {
                               return (
@@ -1167,37 +1171,6 @@ function AgendaTabs({
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
-                              const isEditingThis = editingBooking?.id === booking.id;
-
-                              if (isEditingThis) {
-                                return (
-                                  <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top">
-                                    <div className="h-full rounded-lg flex flex-col gap-1 p-1.5 bg-white border-2 border-green-400" style={{ minHeight: `${spanRows * 24}px` }}>
-                                      <input autoFocus value={editForm.nome}
-                                        onChange={e => setEditForm(p => ({ ...p, nome: e.target.value }))}
-                                        onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
-                                        placeholder="Nome *" className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                      <input value={editForm.tel}
-                                        onChange={e => setEditForm(p => ({ ...p, tel: e.target.value }))}
-                                        placeholder="Telefone" className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                      <div className="flex items-center gap-1">
-                                        <input value={editForm.valor} type="number" step="0.01"
-                                          onChange={e => setEditForm(p => ({ ...p, valor: e.target.value }))}
-                                          onKeyDown={e => e.key === "Enter" && handleSaveEdit()}
-                                          placeholder="R$" className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                        <button onClick={handleSaveEdit} disabled={bookingLoading}
-                                          className="p-1 bg-green-600 text-white rounded">
-                                          {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                        </button>
-                                        <button onClick={() => setEditingBooking(null)}
-                                          className="p-1 text-gray-400">
-                                          <X className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </td>
-                                );
-                              }
 
                               return (
                                 <td key={date} rowSpan={spanRows} className="px-0.5 py-0.5 border-l border-gray-100 align-top"
@@ -1251,6 +1224,8 @@ function AgendaTabs({
                                       if (draggingBooking) return;
                                       setEditingBooking(booking);
                                       setEditForm({ nome: booking.nome_cliente, tel: booking.telefone ?? "", valor: booking.valor?.toString() ?? "" });
+                                      setBookingDuracao(booking.duracao ?? 60);
+                                      setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: booking.hora_inicio, mode: "edit", booking });
                                       setDeleteRecConfirm(null);
                                     }}
                                     title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}${booking.valor ? ` - R$${booking.valor}` : ""}\nClique para editar`}>
@@ -1314,36 +1289,6 @@ function AgendaTabs({
                               return null;
                             }
 
-                            if (isEditing) {
-                              return (
-                                <td key={date} className="px-0.5 py-0.5 border-l border-gray-100">
-                                  <div className="flex flex-col gap-1">
-                                    <input autoFocus placeholder="Nome *" value={bookingForm.nome}
-                                      onChange={e => setBookingForm(p => ({ ...p, nome: e.target.value }))}
-                                      onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, slot)}
-                                      className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                    <input placeholder="Telefone" value={bookingForm.tel}
-                                      onChange={e => setBookingForm(p => ({ ...p, tel: e.target.value }))}
-                                      className="w-full px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                    <div className="flex items-center gap-1">
-                                      <input placeholder="R$" value={bookingForm.valor} type="number" step="0.01"
-                                        onChange={e => setBookingForm(p => ({ ...p, valor: e.target.value }))}
-                                        onKeyDown={e => e.key === "Enter" && handleOutlookBooking(c.id, date, slot)}
-                                        className="flex-1 min-w-0 px-1.5 py-1 border border-gray-300 rounded text-xs" />
-                                    <button onClick={() => handleOutlookBooking(c.id, date, slot)} disabled={bookingLoading}
-                                      className="p-1 bg-green-600 text-white rounded">
-                                      {bookingLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                    </button>
-                                    <button onClick={() => { setBookingCell(null); setBookingForm({ nome: "", tel: "", valor: "" }); }}
-                                      className="p-1 text-gray-400">
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                    </div>
-                                  </div>
-                                </td>
-                              );
-                            }
-
                             const cellDropKey = `${date}_${slot}`;
                             return (
                               <td key={date} className="px-0.5 py-0.5 border-l border-gray-100"
@@ -1352,8 +1297,9 @@ function AgendaTabs({
                                 onDrop={e => { e.preventDefault(); handleDropBooking(date, slot); }}>
                                 <button onClick={() => {
                                   onDateChange(date);
-                                  setBookingCell({ courtId: c.id, hora: slot });
                                   setBookingForm({ nome: "", tel: "", valor: "" });
+                                  setBookingDuracao(60);
+                                  setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: slot, mode: "create" });
                                 }}
                                   className={`w-full h-5 rounded border border-dashed transition-colors ${
                                     dragOverCell === cellDropKey
@@ -1641,6 +1587,114 @@ function AgendaTabs({
           })()}
         </div>
       )}
+
+      {/* ── Modal de Booking (criar/editar) ── */}
+      {bookingModal && (() => {
+        const { courtName, date, hora, mode, booking } = bookingModal;
+        const dateObj = new Date(date + "T12:00:00");
+        const dateLabel = `${String(dateObj.getDate()).padStart(2,"0")}/${String(dateObj.getMonth()+1).padStart(2,"0")}/${dateObj.getFullYear()}`;
+        const isCreate = mode === "create";
+        const form = isCreate ? bookingForm : editForm;
+        const setForm = isCreate
+          ? (fn: (p: typeof bookingForm) => typeof bookingForm) => setBookingForm(fn)
+          : (fn: (p: typeof editForm) => typeof editForm) => setEditForm(fn);
+
+        async function handleSubmit() {
+          if (isCreate) {
+            await handleOutlookBooking(bookingModal!.courtId, date, hora);
+            setBookingModal(null);
+          } else {
+            await handleSaveEdit();
+            setBookingModal(null);
+          }
+        }
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setBookingModal(null)}
+            onKeyDown={e => e.key === "Escape" && setBookingModal(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="bg-green-600 px-5 py-4 text-white">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">{isCreate ? "Nova Reserva" : "Editar Reserva"}</h3>
+                  <button onClick={() => setBookingModal(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 mt-2 text-green-100 text-sm">
+                  <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {dateLabel}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {hora}</span>
+                  <span>{courtName}</span>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-5 py-4 space-y-4">
+                {/* Duração */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DURACAO_OPTIONS.map(opt => (
+                      <button key={opt.value}
+                        onClick={() => setBookingDuracao(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          bookingDuracao === opt.value
+                            ? "bg-green-600 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nome */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nome *</label>
+                  <input autoFocus value={form.nome}
+                    onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
+                    onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                    placeholder="Nome do cliente"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                </div>
+
+                {/* Telefone */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Telefone</label>
+                  <input value={form.tel}
+                    onChange={e => setForm(p => ({ ...p, tel: e.target.value }))}
+                    placeholder="(00) 00000-0000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                </div>
+
+                {/* Valor */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Valor (R$)</label>
+                  <input value={form.valor} type="number" step="0.01"
+                    onChange={e => setForm(p => ({ ...p, valor: e.target.value }))}
+                    onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+                <button onClick={() => setBookingModal(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={handleSubmit} disabled={bookingLoading || !form.nome.trim()}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+                  {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {isCreate ? "Reservar" : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de confirmação para excluir série toda */}
       {deleteSerieConfirm && (
