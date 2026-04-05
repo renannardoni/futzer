@@ -125,51 +125,122 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
           </label>
           {availableSlots.length === 0 ? (
             <p className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nenhum horário neste dia</p>
-          ) : (
-            <>
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Duração</label>
-                <select value={selectedDuracao} onChange={e => setSelectedDuracao(parseInt(e.target.value))}
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 dark:text-gray-200">
-                  {duracaoOptions.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[...availableSlots].sort().map(slot => {
-                  const occupiedByReserva = dayReservas.some(r => {
-                    const occupied = slotsOcupados(r.hora_inicio, r.duracao ?? 60);
-                    return occupied.includes(slot);
-                  });
-                  const isSelected = selectedSlot === slot && !occupiedByReserva;
+          ) : (() => {
+            const sortedSlots = [...availableSlots].sort();
 
-                  if (occupiedByReserva) {
+            // Pre-compute occupied set
+            const occupiedSet = new Set<string>();
+            dayReservas.forEach(r => {
+              slotsOcupados(r.hora_inicio, r.duracao ?? 60).forEach(s => occupiedSet.add(s));
+            });
+
+            // Compute selected block (start + duration)
+            const selectedBlockSet = new Set<string>();
+            if (selectedSlot && !occupiedSet.has(selectedSlot)) {
+              const [sh, sm] = selectedSlot.split(":").map(Number);
+              const startMin = sh * 60 + sm;
+              const slotsNeeded = Math.floor(selectedDuracao / 15);
+              for (let i = 0; i < slotsNeeded; i++) {
+                const t = startMin + i * 15;
+                selectedBlockSet.add(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+              }
+            }
+
+            // Check if selecting a slot would cause conflict with occupied
+            function wouldConflict(slot: string) {
+              const [sh, sm] = slot.split(":").map(Number);
+              const startMin = sh * 60 + sm;
+              const slotsNeeded = Math.floor(selectedDuracao / 15);
+              for (let i = 0; i < slotsNeeded; i++) {
+                const t = startMin + i * 15;
+                const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+                if (occupiedSet.has(s) || !availableSlots.includes(s)) return true;
+              }
+              return false;
+            }
+
+            return (
+              <>
+                {/* Duração — pills */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Duração</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {duracaoOptions.map(o => (
+                      <button key={o.value} onClick={() => { setSelectedDuracao(o.value); setSelectedSlot(null); }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          selectedDuracao === o.value
+                            ? 'bg-[#6AB945] text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Timeline vertical */}
+                <div className="max-h-[360px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600">
+                  {sortedSlots.map((slot, idx) => {
+                    const isHour = slot.endsWith(":00");
+                    const isOccupied = occupiedSet.has(slot);
+                    const isInSelectedBlock = selectedBlockSet.has(slot);
+                    const isSelectedStart = selectedSlot === slot;
+                    const conflict = !isOccupied && wouldConflict(slot);
+
                     return (
                       <div key={slot}
-                        className="py-2 rounded-md text-xs text-center cursor-not-allowed relative overflow-hidden border border-gray-200 dark:border-gray-600">
-                        <div className="absolute inset-0" style={{
-                          background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
-                        }} />
-                        <span className="relative text-gray-400 font-medium">{slot}</span>
+                        className={`flex items-center gap-2 px-3 transition-colors ${
+                          isHour && idx > 0 ? "border-t border-gray-200 dark:border-gray-600" : idx > 0 ? "border-t border-gray-100 dark:border-gray-700" : ""
+                        } ${
+                          isOccupied
+                            ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                            : isInSelectedBlock
+                              ? "bg-[#6AB945]/15 dark:bg-[#6AB945]/20"
+                              : conflict
+                                ? "bg-white dark:bg-gray-900 opacity-40 cursor-not-allowed"
+                                : "bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer"
+                        }`}
+                        style={{ minHeight: "32px" }}
+                        onClick={() => {
+                          if (!isOccupied && !conflict) setSelectedSlot(slot);
+                        }}>
+                        {/* Hora label */}
+                        <span className={`w-12 text-xs font-mono shrink-0 ${
+                          isHour ? "font-semibold text-gray-700 dark:text-gray-200" : "text-gray-300 dark:text-gray-600"
+                        }`}>
+                          {isHour ? slot : slot}
+                        </span>
+
+                        {/* Slot content */}
+                        <div className="flex-1 min-h-[28px] flex items-center">
+                          {isOccupied ? (
+                            <div className="w-full h-6 rounded relative overflow-hidden">
+                              <div className="absolute inset-0" style={{
+                                background: "repeating-linear-gradient(45deg, #e5e7eb, #e5e7eb 3px, #d1d5db 3px, #d1d5db 6px)",
+                              }} />
+                              <span className="relative text-[10px] text-gray-400 font-medium px-2 leading-6">Ocupado</span>
+                            </div>
+                          ) : isSelectedStart ? (
+                            <div className="w-full h-6 rounded bg-[#6AB945] flex items-center px-2">
+                              <span className="text-[10px] text-white font-semibold">
+                                {slot} — {DURACAO_OPTIONS.find(o => o.value === selectedDuracao)?.label}
+                              </span>
+                            </div>
+                          ) : isInSelectedBlock ? (
+                            <div className="w-full h-4 rounded bg-[#6AB945]/30" />
+                          ) : conflict ? (
+                            <div className="w-full h-4 rounded bg-gray-100 dark:bg-gray-800" />
+                          ) : (
+                            <div className="w-full h-4 rounded border border-dashed border-green-200 dark:border-green-800 hover:border-green-400" />
+                          )}
+                        </div>
                       </div>
                     );
-                  }
-
-                  return (
-                    <button key={slot} onClick={() => setSelectedSlot(slot)}
-                      className={`py-2 rounded-md text-xs font-medium transition-colors ${
-                        isSelected
-                          ? 'bg-[#6AB945] text-white border border-[#6AB945]'
-                          : 'border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40'
-                      }`}>
-                      {slot}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
