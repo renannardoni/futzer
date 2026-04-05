@@ -61,17 +61,43 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
     return `${m1} ${y1} / ${m2} ${y2}`;
   })();
 
+  // Pre-compute occupied slots
+  const occupiedSet = new Set<string>();
+  dayReservas.forEach(r => {
+    slotsOcupados(r.hora_inicio, r.duracao ?? 60).forEach(s => occupiedSet.add(s));
+  });
+
+  // Check if selecting a slot with current duration would conflict
+  function wouldConflict(slot: string) {
+    const [sh, sm] = slot.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const slotsNeeded = Math.floor(selectedDuracao / 15);
+    for (let i = 0; i < slotsNeeded; i++) {
+      const t = startMin + i * 15;
+      const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+      if (occupiedSet.has(s) || !availableSlots.includes(s)) return true;
+    }
+    return false;
+  }
+
+  // Format selected date nicely
+  const selectedDateObj = new Date(selectedDate + "T12:00:00");
+  const selectedDateLabel = `${DAY_NAMES[selectedDateObj.getDay()]}, ${String(selectedDateObj.getDate()).padStart(2,"0")}/${String(selectedDateObj.getMonth()+1).padStart(2,"0")}`;
+
+  // Conflict message for selected slot
+  const selectedConflict = selectedSlot && !occupiedSet.has(selectedSlot) && wouldConflict(selectedSlot);
+
   return (
     <div className="space-y-5">
       {/* Date strip */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium dark:text-gray-200">Data</label>
-          <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{monthLabel}</span>
+          <label className="block text-sm font-semibold text-gray-800">Data</label>
+          <span className="text-sm text-gray-500 font-medium">{monthLabel}</span>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => setDateOffset(p => Math.max(p - 7, 0))} disabled={dateOffset === 0}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30">
+            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none flex-1">
@@ -82,8 +108,8 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                 <button key={date} onClick={() => { setSelectedDate(date); setSelectedSlot(null); }}
                   className={`flex-shrink-0 flex flex-col items-center px-2 py-2 rounded-lg border text-xs w-[2.6rem] transition-colors ${
                     isSelected
-                      ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:border-[#6AB945]'
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'border-gray-200 text-gray-700 bg-white hover:border-green-400'
                   }`}>
                   <span className="font-medium">{DAY_NAMES[d.getDay()]}</span>
                   <span className="text-sm font-bold mt-0.5">{d.getDate()}</span>
@@ -92,7 +118,7 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
             })}
           </div>
           <button onClick={() => setDateOffset(p => p + 7)}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+            className="p-1 rounded hover:bg-gray-100">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -101,14 +127,14 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
       {/* Court selector */}
       {courts.length > 1 && (
         <div>
-          <label className="block text-sm font-medium mb-2 dark:text-gray-200">Quadra</label>
+          <label className="block text-sm font-semibold text-gray-800 mb-2">Quadra</label>
           <div className="flex gap-2 flex-wrap">
             {courts.map(c => (
               <button key={c.id} onClick={() => { setSelectedCourtId(c.id); setSelectedSlot(null); }}
                 className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                   selectedCourtId === c.id
-                    ? 'bg-[#6AB945] text-white border-[#6AB945]'
-                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 hover:border-[#6AB945]'
+                    ? 'bg-green-600 text-white border-green-600'
+                    : 'border-gray-200 text-gray-600 bg-white hover:border-green-400'
                 }`}>
                 {c.nome}
               </button>
@@ -117,153 +143,141 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
         </div>
       )}
 
-      {/* Time slots */}
+      {/* Timeline */}
       {selectedCourt && (
         <div>
-          <label className="block text-sm font-medium mb-2 dark:text-gray-200">
-            Horários disponíveis — {selectedCourt.nome}
+          <label className="block text-sm font-semibold text-gray-800 mb-2">
+            Horários — {selectedCourt.nome}
           </label>
           {availableSlots.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">Nenhum horário neste dia</p>
+            <div className="py-6 text-center">
+              <p className="text-sm text-gray-500">Nenhum horário neste dia</p>
+            </div>
           ) : (() => {
             const sortedSlots = [...availableSlots].sort();
 
-            // Pre-compute occupied set
-            const occupiedSet = new Set<string>();
-            dayReservas.forEach(r => {
-              slotsOcupados(r.hora_inicio, r.duracao ?? 60).forEach(s => occupiedSet.add(s));
+            // Group slots by hour for visual grouping
+            const hourGroups: { hour: string; slots: string[] }[] = [];
+            sortedSlots.forEach(slot => {
+              const hour = slot.split(":")[0] + ":00";
+              const last = hourGroups[hourGroups.length - 1];
+              if (last && last.hour === hour) {
+                last.slots.push(slot);
+              } else {
+                hourGroups.push({ hour, slots: [slot] });
+              }
             });
 
-            // Compute selected block (start + duration)
-            const selectedBlockSet = new Set<string>();
-            if (selectedSlot && !occupiedSet.has(selectedSlot)) {
-              const [sh, sm] = selectedSlot.split(":").map(Number);
-              const startMin = sh * 60 + sm;
-              const slotsNeeded = Math.floor(selectedDuracao / 15);
-              for (let i = 0; i < slotsNeeded; i++) {
-                const t = startMin + i * 15;
-                selectedBlockSet.add(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
-              }
-            }
-
-            // Check if selecting a slot would cause conflict with occupied
-            function wouldConflict(slot: string) {
-              const [sh, sm] = slot.split(":").map(Number);
-              const startMin = sh * 60 + sm;
-              const slotsNeeded = Math.floor(selectedDuracao / 15);
-              for (let i = 0; i < slotsNeeded; i++) {
-                const t = startMin + i * 15;
-                const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
-                if (occupiedSet.has(s) || !availableSlots.includes(s)) return true;
-              }
-              return false;
-            }
-
             return (
-              <>
-                {/* Duração — pills */}
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Duração</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {duracaoOptions.map(o => (
-                      <button key={o.value} onClick={() => { setSelectedDuracao(o.value); setSelectedSlot(null); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          selectedDuracao === o.value
-                            ? 'bg-[#6AB945] text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}>
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="space-y-1">
+                {hourGroups.map(group => (
+                  <div key={group.hour} className="flex items-start gap-2">
+                    {/* Hour label */}
+                    <span className="w-11 text-xs font-semibold text-gray-500 pt-1.5 shrink-0 font-mono">
+                      {group.hour}
+                    </span>
+                    {/* 15-min cells in a row */}
+                    <div className="flex-1 grid grid-cols-4 gap-0.5">
+                      {["00", "15", "30", "45"].map(mm => {
+                        const slot = group.hour.split(":")[0] + ":" + mm;
+                        const exists = group.slots.includes(slot);
+                        if (!exists) {
+                          return <div key={mm} className="h-8 rounded bg-gray-50" />;
+                        }
+                        const isOccupied = occupiedSet.has(slot);
+                        const isSelected = selectedSlot === slot;
+                        const conflict = !isOccupied && wouldConflict(slot);
 
-                {/* Timeline vertical */}
-                <div className="rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
-                  {sortedSlots.map((slot, idx) => {
-                    const isHour = slot.endsWith(":00");
-                    const isOccupied = occupiedSet.has(slot);
-                    const isInSelectedBlock = selectedBlockSet.has(slot);
-                    const isSelectedStart = selectedSlot === slot;
-                    const conflict = !isOccupied && wouldConflict(slot);
-                    const clickable = !isOccupied && !conflict;
-
-                    const borderClass = isHour && idx > 0
-                      ? "border-t border-gray-200 dark:border-gray-600"
-                      : idx > 0 ? "border-t border-gray-50 dark:border-gray-700" : "";
-
-                    if (!clickable) {
-                      return (
-                        <div key={slot} className={`flex items-center gap-2 px-3 py-1.5 ${borderClass} ${
-                          isOccupied
-                            ? "bg-gray-50 dark:bg-gray-800"
-                            : "bg-white dark:bg-gray-900 opacity-40"
-                        }`}>
-                          <span className={`w-11 text-xs font-mono shrink-0 ${isHour ? "font-semibold text-gray-400" : "text-gray-300 dark:text-gray-600"}`}>{slot}</span>
-                          {isOccupied ? (
-                            <div className="flex-1 h-5 rounded relative overflow-hidden">
+                        if (isOccupied) {
+                          return (
+                            <div key={mm} className="h-8 rounded relative overflow-hidden" title="Ocupado">
                               <div className="absolute inset-0" style={{
-                                background: "repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 3px, #e5e7eb 3px, #e5e7eb 6px)",
+                                background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
                               }} />
                             </div>
-                          ) : (
-                            <div className="flex-1 h-3 rounded bg-gray-100 dark:bg-gray-800" />
-                          )}
-                        </div>
-                      );
-                    }
+                          );
+                        }
 
-                    return (
-                      <button key={slot} type="button"
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${borderClass} ${
-                          isSelectedStart
-                            ? "bg-green-600 dark:bg-green-700"
-                            : isInSelectedBlock
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : "bg-white dark:bg-gray-900 hover:bg-green-50 dark:hover:bg-green-900/20"
-                        }`}>
-                        <span className={`w-11 text-xs font-mono shrink-0 ${
-                          isSelectedStart
-                            ? "font-semibold text-white"
-                            : isHour
-                              ? "font-semibold text-gray-700 dark:text-gray-200"
-                              : "text-gray-400 dark:text-gray-500"
-                        }`}>{slot}</span>
-                        <div className="flex-1">
-                          {isSelectedStart ? (
-                            <div className="h-5 rounded flex items-center">
-                              <span className="text-[11px] text-white font-semibold">
-                                {DURACAO_OPTIONS.find(o => o.value === selectedDuracao)?.label}
-                              </span>
-                            </div>
-                          ) : isInSelectedBlock ? (
-                            <div className="h-3 rounded bg-green-300/50 dark:bg-green-600/30" />
-                          ) : (
-                            <div className="h-3 rounded border border-dashed border-gray-200 dark:border-gray-700" />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
+                        return (
+                          <button key={mm} type="button"
+                            onClick={() => setSelectedSlot(slot)}
+                            disabled={conflict}
+                            className={`h-8 rounded text-[11px] font-medium transition-all ${
+                              isSelected
+                                ? "bg-green-600 text-white ring-2 ring-green-300"
+                                : conflict
+                                  ? "bg-gray-50 text-gray-300 cursor-not-allowed"
+                                  : "bg-white border border-gray-200 text-gray-600 hover:border-green-400 hover:bg-green-50"
+                            }`}>
+                            {slot}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             );
           })()}
         </div>
       )}
 
-      {/* WhatsApp CTA */}
-      {selectedSlot !== null && quadra.telefone && selectedCourt && (
-        <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot, selectedDuracao)}
-          target="_blank" rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3.5 text-base font-semibold rounded-lg transition-colors">
-          <MessageCircle className="w-5 h-5" />
-          Reservar via WhatsApp
-        </a>
-      )}
-      {selectedSlot !== null && !quadra.telefone && (
-        <p className="text-sm text-gray-400 text-center">Entre em contato com a arena para reservar</p>
+      {/* Booking Card — appears when slot is selected */}
+      {selectedSlot !== null && selectedCourt && (
+        <div className="bg-white rounded-xl border-2 border-green-200 p-4 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-gray-800">Agendar horário</h4>
+            <button onClick={() => setSelectedSlot(null)} className="p-1 text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-green-600" /> {selectedSlot}</span>
+            <span className="flex items-center gap-1"><MapPin className="w-4 h-4 text-green-600" /> {selectedCourt.nome}</span>
+          </div>
+          <div className="text-xs text-gray-500">{selectedDateLabel}</div>
+
+          {/* Duration pills */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
+            <div className="flex flex-wrap gap-1.5">
+              {duracaoOptions.map(o => (
+                <button key={o.value} onClick={() => setSelectedDuracao(o.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    selectedDuracao === o.value
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Conflict warning */}
+          {selectedConflict && (
+            <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <span className="text-xs text-amber-700">
+                A duração selecionada conflita com um horário já reservado. Tente uma duração menor.
+              </span>
+            </div>
+          )}
+
+          {/* WhatsApp button */}
+          {!selectedConflict && quadra.telefone && (
+            <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot, selectedDuracao)}
+              target="_blank" rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3 text-sm font-semibold rounded-lg transition-colors">
+              <MessageCircle className="w-5 h-5" />
+              Reservar via WhatsApp
+            </a>
+          )}
+          {!selectedConflict && !quadra.telefone && (
+            <p className="text-sm text-gray-400 text-center">Entre em contato com a arena para reservar</p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -635,7 +649,10 @@ export default function QuadraPage() {
                         Consultar horários via WhatsApp
                       </a>
                     )}
-                    <p className="text-center text-sm text-gray-400">
+                    <p className="text-center text-sm text-gray-500 font-medium">
+                      Quadra ainda não integrada
+                    </p>
+                    <p className="text-center text-xs text-gray-400 mt-1">
                       Entre em contato para verificar disponibilidade
                     </p>
 
