@@ -182,7 +182,7 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                         const slot = group.hour.split(":")[0] + ":" + mm;
                         const exists = group.slots.includes(slot);
                         if (!exists) {
-                          return <div key={mm} className="h-8 rounded bg-gray-50" />;
+                          return <div key={mm} className="h-9" />;
                         }
                         const isOccupied = occupiedSet.has(slot);
                         const isSelected = selectedSlot === slot;
@@ -190,7 +190,7 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
 
                         if (isOccupied) {
                           return (
-                            <div key={mm} className="h-8 rounded relative overflow-hidden" title="Ocupado">
+                            <div key={mm} className="h-9 rounded-md relative overflow-hidden" title="Ocupado">
                               <div className="absolute inset-0" style={{
                                 background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
                               }} />
@@ -202,12 +202,12 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                           <button key={mm} type="button"
                             onClick={() => setSelectedSlot(slot)}
                             disabled={conflict}
-                            className={`h-8 rounded text-[11px] font-medium transition-all ${
+                            className={`h-9 rounded-md text-xs font-semibold transition-all ${
                               isSelected
-                                ? "bg-green-600 text-white ring-2 ring-green-300"
+                                ? "bg-green-600 text-white ring-2 ring-green-300 shadow-sm"
                                 : conflict
-                                  ? "bg-gray-50 text-gray-300 cursor-not-allowed"
-                                  : "bg-white border border-gray-200 text-gray-600 hover:border-green-400 hover:bg-green-50"
+                                  ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                                  : "bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 hover:border-green-400 active:bg-green-200"
                             }`}>
                             {slot}
                           </button>
