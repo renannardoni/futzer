@@ -1602,11 +1602,6 @@ function AgendaTabs({
           ? (fn: (p: typeof bookingForm) => typeof bookingForm) => setBookingForm(fn)
           : (fn: (p: typeof editForm) => typeof editForm) => setEditForm(fn);
 
-        // Available slots for this court/date
-        const modalDayKey = getDayKey(date);
-        const modalCourt = courts.find(ct => ct.id === bookingModal.courtId);
-        const modalAvailableSlots = (modalCourt?.horariosSemanais?.[modalDayKey]?.slots ?? []).sort();
-
         async function handleSubmit() {
           if (isCreate) {
             await handleOutlookBooking(bookingModal!.courtId, date, modalHora);
@@ -1657,19 +1652,11 @@ function AgendaTabs({
                 {/* Horário de início */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Horário de início</label>
-                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                    {modalAvailableSlots.map(s => (
-                      <button key={s}
-                        onClick={() => setModalHora(s)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          modalHora === s
-                            ? "bg-green-600 text-white shadow-sm"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+                  <TimeInput
+                    value={modalHora}
+                    onChange={val => setModalHora(val)}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Duração */}
