@@ -32,7 +32,9 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   const courts = quadra.quadrasInternas ?? [];
   const [selectedCourtId, setSelectedCourtId] = useState(courts[0]?.id ?? "");
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [selectedDuracao, setSelectedDuracao] = useState(60);
+  const minDuracao = quadra.duracaoMinima ?? 0;
+  const duracaoOptions = DURACAO_OPTIONS.filter(o => o.value >= minDuracao);
+  const [selectedDuracao, setSelectedDuracao] = useState(Math.max(60, minDuracao));
 
   const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? courts[0];
   const dayKey = getDayKey(selectedDate);
@@ -129,7 +131,7 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Duração</label>
                 <select value={selectedDuracao} onChange={e => setSelectedDuracao(parseInt(e.target.value))}
                   className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 dark:text-gray-200">
-                  {DURACAO_OPTIONS.map(o => (
+                  {duracaoOptions.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>

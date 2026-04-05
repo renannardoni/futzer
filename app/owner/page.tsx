@@ -63,6 +63,7 @@ type ArenaForm = {
   rua: string; cidade: string; estado: string; cep: string;
   lat: string; lng: string; imagemCapa: string; imagens: string[];
   mostrarDisponibilidade: boolean;
+  duracaoMinima: string;
 };
 
 function fromArena(a: Quadra): ArenaForm {
@@ -70,6 +71,7 @@ function fromArena(a: Quadra): ArenaForm {
     nome: a.nome, descricao: a.descricao,
     telefone: a.telefone ?? "", precoPorHora: a.precoPorHora?.toString() ?? "",
     mostrarDisponibilidade: a.mostrarDisponibilidade ?? false,
+    duracaoMinima: a.duracaoMinima?.toString() ?? "",
     rua: a.endereco.rua, cidade: a.endereco.cidade,
     estado: a.endereco.estado, cep: a.endereco.cep,
     lat: a.coordenadas.lat.toString(), lng: a.coordenadas.lng.toString(),
@@ -136,6 +138,7 @@ function ArenaSettingsPanel({
         endereco: { rua: form.rua, cidade: form.cidade, estado: form.estado, cep: form.cep },
         coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
         mostrarDisponibilidade: form.mostrarDisponibilidade,
+        duracaoMinima: form.duracaoMinima ? parseInt(form.duracaoMinima) : null,
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = await updateQuadra(arena.id, payload as any);
@@ -179,6 +182,15 @@ function ArenaSettingsPanel({
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Preço/hora (R$)</label>
                 <input type="number" min="0" step="0.01" value={form.precoPorHora} onChange={set("precoPorHora")} placeholder="Ex: 120.00" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Duração mínima</label>
+                <select value={form.duracaoMinima} onChange={e => setForm(prev => ({ ...prev, duracaoMinima: e.target.value }))} className={inp}>
+                  <option value="">Sem mínimo</option>
+                  {DURACAO_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </section>
@@ -447,6 +459,7 @@ function CourtEditPanel({
 
 const EMPTY_ARENA: ArenaForm = {
   nome: "", descricao: "", telefone: "", precoPorHora: "", mostrarDisponibilidade: false,
+  duracaoMinima: "",
   rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "", imagens: [],
 };
 
@@ -572,7 +585,7 @@ function AgendaTabs({
   const [tab, setTab] = useState<AgendaTab>("horario");
   const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: string } | null>(null);
   const [bookingForm, setBookingForm] = useState({ nome: "", tel: "", valor: "" });
-  const [bookingDuracao, setBookingDuracao] = useState(60);
+  const [bookingDuracao, setBookingDuracao] = useState(Math.max(60, arena.duracaoMinima ?? 0));
   const [bookingLoading, setBookingLoading] = useState(false);
   const [deletingBookingId, setDeletingBookingId] = useState<string | null>(null);
   const [deleteRecConfirm, setDeleteRecConfirm] = useState<{ bookingId: string; grupoId: string } | null>(null);
@@ -604,7 +617,7 @@ function AgendaTabs({
   }>({
     quadra_id: courts[0]?.id ?? "",
     hora_inicio: "",
-    duracao: 60,
+    duracao: Math.max(60, arena.duracaoMinima ?? 0),
     dias_semana: [],
     data_inicio: todayISO(),
     nome: "",
@@ -620,6 +633,8 @@ function AgendaTabs({
 
   const dayKey = getDayKey(selectedDate);
   const allBookings = arena.reservas ?? [];
+  const minDuracao = arena.duracaoMinima ?? 0;
+  const duracaoOptions = DURACAO_OPTIONS.filter(o => o.value >= minDuracao);
 
   // ── Booking handlers ──
   async function handleAddBooking(courtId: string, horaInicio: string, duracao: number = bookingDuracao) {
@@ -876,7 +891,7 @@ function AgendaTabs({
                   <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
                   <select value={bookingDuracao} onChange={e => setBookingDuracao(parseInt(e.target.value))}
                     className={`w-full md:w-28 ${inp}`}>
-                    {DURACAO_OPTIONS.map(o => (
+                    {duracaoOptions.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
@@ -1300,7 +1315,7 @@ function AgendaTabs({
                                 <button onClick={() => {
                                   onDateChange(date);
                                   setBookingForm({ nome: "", tel: "", valor: "" });
-                                  setBookingDuracao(60);
+                                  setBookingDuracao(Math.max(60, minDuracao));
                                   setModalHora(slot);
                                   setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: slot, mode: "create" });
                                 }}
@@ -1419,7 +1434,7 @@ function AgendaTabs({
                 <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
                 <select value={recForm.duracao} onChange={e => setRecForm(p => ({ ...p, duracao: parseInt(e.target.value) }))}
                   className={`w-full ${inp}`}>
-                  {DURACAO_OPTIONS.map(o => (
+                  {duracaoOptions.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
@@ -1675,7 +1690,7 @@ function AgendaTabs({
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
                   <div className="flex flex-wrap gap-2">
-                    {DURACAO_OPTIONS.map(opt => (
+                    {duracaoOptions.map(opt => (
                       <button key={opt.value}
                         onClick={() => setBookingDuracao(opt.value)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${

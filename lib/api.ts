@@ -149,6 +149,7 @@ export interface Quadra {
   owner_id?: string;
   ativo?: boolean;
   mostrarDisponibilidade?: boolean;
+  duracaoMinima?: number | null;
   horariosSemanais?: HorariosSemanais;
   datasBloqueadas?: string[];
   quadrasInternas?: SubQuadra[];
