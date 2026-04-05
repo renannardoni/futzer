@@ -80,12 +80,28 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
     return false;
   }
 
+  // Compute selected block + conflict
+  const selectedBlockSlots = new Set<string>();
+  const selectedConflictSlots = new Set<string>();
+  let selectedConflict = false;
+  if (selectedSlot) {
+    const [sh, sm] = selectedSlot.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const slotsNeeded = Math.floor(selectedDuracao / 15);
+    for (let i = 0; i < slotsNeeded; i++) {
+      const t = startMin + i * 15;
+      const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+      selectedBlockSlots.add(s);
+      if (occupiedSet.has(s) || (i > 0 && !availableSlots.includes(s))) {
+        selectedConflictSlots.add(s);
+        selectedConflict = true;
+      }
+    }
+  }
+
   // Format selected date nicely
   const selectedDateObj = new Date(selectedDate + "T12:00:00");
   const selectedDateLabel = `${DAY_NAMES[selectedDateObj.getDay()]}, ${String(selectedDateObj.getDate()).padStart(2,"0")}/${String(selectedDateObj.getMonth()+1).padStart(2,"0")}`;
-
-  // Conflict message for selected slot
-  const selectedConflict = selectedSlot && !occupiedSet.has(selectedSlot) && wouldConflict(selectedSlot);
 
   return (
     <div className="space-y-5">
@@ -248,18 +264,30 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                       {["00", "15", "30", "45"].map(mm => {
                         const slot = group.hour.split(":")[0] + ":" + mm;
                         const exists = group.slots.includes(slot);
+                        const isInBlock = selectedBlockSlots.has(slot);
+                        const isConflictSlot = selectedConflictSlots.has(slot);
+
+                        // Slot outside available range but part of selected block
+                        if (!exists && isInBlock) {
+                          return (
+                            <div key={mm} className={`h-9 rounded-md ${isConflictSlot ? "bg-red-100 ring-2 ring-red-300" : "bg-green-100"}`} />
+                          );
+                        }
                         if (!exists) {
                           return <div key={mm} className="h-9" />;
                         }
+
                         const isOccupied = occupiedSet.has(slot);
                         const isSelected = selectedSlot === slot;
-                        const conflict = !isOccupied && wouldConflict(slot);
 
+                        // Occupied slot that's also in selected block = conflict highlight
                         if (isOccupied) {
                           return (
-                            <div key={mm} className="h-9 rounded-md relative overflow-hidden" title="Ocupado">
+                            <div key={mm} className={`h-9 rounded-md relative overflow-hidden ${isConflictSlot ? "ring-2 ring-red-400" : ""}`} title="Ocupado">
                               <div className="absolute inset-0" style={{
-                                background: "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
+                                background: isConflictSlot
+                                  ? "repeating-linear-gradient(45deg, #fee2e2, #fee2e2 3px, #fecaca 3px, #fecaca 6px)"
+                                  : "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
                               }} />
                             </div>
                           );
@@ -268,12 +296,11 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
                         return (
                           <button key={mm} type="button"
                             onClick={() => setSelectedSlot(slot)}
-                            disabled={conflict}
                             className={`h-9 rounded-md text-xs font-semibold transition-all ${
                               isSelected
                                 ? "bg-green-600 text-white ring-2 ring-green-300 shadow-sm"
-                                : conflict
-                                  ? "bg-gray-100 text-gray-300 cursor-not-allowed"
+                                : isInBlock
+                                  ? "bg-green-200 text-green-800 border border-green-300"
                                   : "bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 hover:border-green-400 active:bg-green-200"
                             }`}>
                             {slot}
