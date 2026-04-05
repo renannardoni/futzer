@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 
 export default function LandingPage() {
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   return (
     <>
       <style>{`
@@ -48,8 +51,9 @@ export default function LandingPage() {
         }
 
         .logo-container {
-          width: 260px; height: 260px;
-          margin: 0 auto 20px;
+          width: min(260px, 30vh);
+          height: min(260px, 30vh);
+          margin: 0 auto 12px;
           animation: logoEntry 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
           opacity: 0;
           transform: scale(0.3) rotate(-180deg);
@@ -66,8 +70,8 @@ export default function LandingPage() {
         }
 
         .brand-name {
-          font-size: 4rem; font-weight: 900;
-          letter-spacing: 8px; text-transform: uppercase;
+          font-size: clamp(2rem, 5vw, 4rem); font-weight: 900;
+          letter-spacing: clamp(4px, 1vw, 8px); text-transform: uppercase;
           color: #ffffff;
           opacity: 0;
           animation: slideUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s forwards;
@@ -80,17 +84,17 @@ export default function LandingPage() {
         }
 
         .tagline {
-          font-size: 1rem; font-weight: 600;
-          letter-spacing: 6px; text-transform: uppercase;
+          font-size: clamp(0.7rem, 1.2vw, 1rem); font-weight: 600;
+          letter-spacing: clamp(3px, 0.5vw, 6px); text-transform: uppercase;
           color: rgba(255,255,255,0.7);
-          margin-top: 10px; opacity: 0;
+          margin-top: 8px; opacity: 0;
           animation: slideUp 0.8s ease 1.2s forwards;
         }
 
         .divider {
           width: 0; height: 2px;
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-          margin: 30px auto;
+          margin: 16px auto;
           animation: expandLine 0.8s ease 1.5s forwards;
         }
 
@@ -113,14 +117,14 @@ export default function LandingPage() {
           gap: 16px;
           justify-content: center;
           flex-wrap: wrap;
-          margin-bottom: 28px;
+          margin-bottom: 20px;
         }
 
         .city-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 16px 36px;
+          padding: 12px 32px;
           background: #22a54a;
           color: white;
           border: none;
@@ -156,7 +160,7 @@ export default function LandingPage() {
           display: flex;
           align-items: center;
           gap: 16px;
-          margin: 0 auto 28px;
+          margin: 0 auto 16px;
           max-width: 300px;
           opacity: 0;
           animation: slideUp 0.6s ease 2.1s forwards;
@@ -185,7 +189,7 @@ export default function LandingPage() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          padding: 14px 36px;
+          padding: 10px 28px;
           background: transparent;
           color: white;
           border: 2px solid rgba(255,255,255,0.25);
@@ -283,6 +287,18 @@ export default function LandingPage() {
           .logo-container { width: 150px; height: 150px; }
           .city-buttons { flex-direction: column; align-items: center; }
           .city-btn { width: 260px; justify-content: center; }
+        }
+
+        @media (max-height: 700px) {
+          .logo-container { width: 120px; height: 120px; margin-bottom: 8px; }
+          .brand-name { font-size: 2rem; }
+          .tagline { font-size: 0.7rem; margin-top: 4px; }
+          .divider { margin: 10px auto; }
+          .city-btn { padding: 10px 24px; font-size: 0.85rem; }
+          .owner-btn { padding: 8px 20px; font-size: 0.8rem; }
+          .section-label { font-size: 0.7rem; margin-bottom: 10px; }
+          .btn-separator { margin-bottom: 12px; }
+          .city-buttons { margin-bottom: 12px; gap: 8px; }
         }
       `}</style>
 
