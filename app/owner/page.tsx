@@ -1628,13 +1628,15 @@ function AgendaTabs({
           }
         }
 
+        const isPastDate = date < todayISO();
+
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={() => setBookingModal(null)}
             onKeyDown={e => e.key === "Escape" && setBookingModal(null)}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="bg-green-600 px-5 py-4 text-white">
+              <div className={`${isPastDate ? "bg-amber-500" : "bg-green-600"} px-5 py-4 text-white`}>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">{isCreate ? "Nova Reserva" : "Editar Reserva"}</h3>
                   <button onClick={() => setBookingModal(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
@@ -1647,8 +1649,18 @@ function AgendaTabs({
                 </div>
               </div>
 
+              {/* Aviso de data passada */}
+              {isPastDate && (
+                <div className="mx-5 mt-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <span className="text-xs text-amber-700">
+                    Esta data já passou. A reserva será registrada apenas para controle.
+                  </span>
+                </div>
+              )}
+
               {/* Body */}
-              <div className="px-5 py-4 space-y-4">
+              <div className={`px-5 ${isPastDate ? "pt-2" : "pt-4"} pb-4 space-y-4`}>
                 {/* Horário de início */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Horário de início</label>
