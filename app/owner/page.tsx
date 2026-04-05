@@ -583,6 +583,7 @@ function AgendaTabs({
     courtId: string; courtName: string; date: string; hora: string;
     mode: "create" | "edit"; booking?: Reserva;
   } | null>(null);
+  const [modalHora, setModalHora] = useState<string>("");
   const [draggingBooking, setDraggingBooking] = useState<Reserva | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null); // "date_slot"
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
@@ -1226,6 +1227,7 @@ function AgendaTabs({
                                       setEditForm({ nome: booking.nome_cliente, tel: booking.telefone ?? "", valor: booking.valor?.toString() ?? "" });
                                       setBookingDuracao(booking.duracao ?? 60);
                                       setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: booking.hora_inicio, mode: "edit", booking });
+                                      setModalHora(booking.hora_inicio);
                                       setDeleteRecConfirm(null);
                                     }}
                                     title={`${booking.nome_cliente} — ${booking.hora_inicio} (${duracaoLabel})${booking.telefone ? ` - ${booking.telefone}` : ""}${booking.valor ? ` - R$${booking.valor}` : ""}\nClique para editar`}>
@@ -1299,6 +1301,7 @@ function AgendaTabs({
                                   onDateChange(date);
                                   setBookingForm({ nome: "", tel: "", valor: "" });
                                   setBookingDuracao(60);
+                                  setModalHora(slot);
                                   setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: slot, mode: "create" });
                                 }}
                                   className={`w-full h-5 rounded border border-dashed transition-colors ${
@@ -1599,13 +1602,34 @@ function AgendaTabs({
           ? (fn: (p: typeof bookingForm) => typeof bookingForm) => setBookingForm(fn)
           : (fn: (p: typeof editForm) => typeof editForm) => setEditForm(fn);
 
+        // Available slots for this court/date
+        const modalDayKey = getDayKey(date);
+        const modalCourt = courts.find(ct => ct.id === bookingModal.courtId);
+        const modalAvailableSlots = (modalCourt?.horariosSemanais?.[modalDayKey]?.slots ?? []).sort();
+
         async function handleSubmit() {
           if (isCreate) {
-            await handleOutlookBooking(bookingModal!.courtId, date, hora);
+            await handleOutlookBooking(bookingModal!.courtId, date, modalHora);
             setBookingModal(null);
-          } else {
-            await handleSaveEdit();
-            setBookingModal(null);
+          } else if (editingBooking) {
+            // If hora changed, update it too
+            const horaChanged = modalHora !== editingBooking.hora_inicio;
+            setBookingLoading(true);
+            try {
+              await updateBooking(arena.id, editingBooking.id, {
+                nome_cliente: editForm.nome.trim(),
+                telefone: editForm.tel.trim() || undefined,
+                valor: editForm.valor ? parseFloat(editForm.valor) : undefined,
+                duracao: bookingDuracao,
+                ...(horaChanged ? { hora_inicio: modalHora } : {}),
+              });
+              await onBookingChange();
+              setEditingBooking(null);
+              setBookingModal(null);
+            } catch (err) {
+              setBookingError(err instanceof Error ? err.message : "Erro ao salvar");
+              setTimeout(() => setBookingError(""), 5000);
+            } finally { setBookingLoading(false); }
           }
         }
 
@@ -1624,13 +1648,30 @@ function AgendaTabs({
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-green-100 text-sm">
                   <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {dateLabel}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {hora}</span>
                   <span>{courtName}</span>
                 </div>
               </div>
 
               {/* Body */}
               <div className="px-5 py-4 space-y-4">
+                {/* Horário de início */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Horário de início</label>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                    {modalAvailableSlots.map(s => (
+                      <button key={s}
+                        onClick={() => setModalHora(s)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          modalHora === s
+                            ? "bg-green-600 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Duração */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
