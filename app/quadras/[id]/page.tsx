@@ -143,6 +143,73 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
         </div>
       )}
 
+      {/* Booking Card — above timeline */}
+      {selectedCourt && (
+        <div className="bg-white rounded-xl border-2 border-green-200 p-4 space-y-3 shadow-sm">
+          {selectedSlot === null ? (
+            <>
+              <h4 className="text-sm font-bold text-gray-800">Agendar horário</h4>
+              <p className="text-xs text-gray-500">Selecione um horário abaixo para agendar</p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-gray-800">Agendar horário</h4>
+                <button onClick={() => setSelectedSlot(null)} className="p-1 text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-green-600" /> {selectedSlot}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-4 h-4 text-green-600" /> {selectedCourt.nome}</span>
+              </div>
+              <div className="text-xs text-gray-500">{selectedDateLabel}</div>
+
+              {/* Duration pills */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {duracaoOptions.map(o => (
+                    <button key={o.value} onClick={() => setSelectedDuracao(o.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        selectedDuracao === o.value
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Conflict warning */}
+              {selectedConflict && (
+                <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <span className="text-xs text-amber-700">
+                    A duração selecionada conflita com um horário já reservado. Tente uma duração menor.
+                  </span>
+                </div>
+              )}
+
+              {/* WhatsApp button */}
+              {!selectedConflict && quadra.telefone && (
+                <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot, selectedDuracao)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3 text-sm font-semibold rounded-lg transition-colors">
+                  <MessageCircle className="w-5 h-5" />
+                  Reservar via WhatsApp
+                </a>
+              )}
+              {!selectedConflict && !quadra.telefone && (
+                <p className="text-sm text-gray-400 text-center">Entre em contato com a arena para reservar</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Timeline */}
       {selectedCourt && (
         <div>
@@ -222,63 +289,6 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
         </div>
       )}
 
-      {/* Booking Card — appears when slot is selected */}
-      {selectedSlot !== null && selectedCourt && (
-        <div className="bg-white rounded-xl border-2 border-green-200 p-4 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-gray-800">Agendar horário</h4>
-            <button onClick={() => setSelectedSlot(null)} className="p-1 text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-green-600" /> {selectedSlot}</span>
-            <span className="flex items-center gap-1"><MapPin className="w-4 h-4 text-green-600" /> {selectedCourt.nome}</span>
-          </div>
-          <div className="text-xs text-gray-500">{selectedDateLabel}</div>
-
-          {/* Duration pills */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
-            <div className="flex flex-wrap gap-1.5">
-              {duracaoOptions.map(o => (
-                <button key={o.value} onClick={() => setSelectedDuracao(o.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    selectedDuracao === o.value
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Conflict warning */}
-          {selectedConflict && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-              <span className="text-xs text-amber-700">
-                A duração selecionada conflita com um horário já reservado. Tente uma duração menor.
-              </span>
-            </div>
-          )}
-
-          {/* WhatsApp button */}
-          {!selectedConflict && quadra.telefone && (
-            <a href={buildWhatsAppUrl(quadra.telefone, selectedCourt.nome, selectedDate, selectedSlot, selectedDuracao)}
-              target="_blank" rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white py-3 text-sm font-semibold rounded-lg transition-colors">
-              <MessageCircle className="w-5 h-5" />
-              Reservar via WhatsApp
-            </a>
-          )}
-          {!selectedConflict && !quadra.telefone && (
-            <p className="text-sm text-gray-400 text-center">Entre em contato com a arena para reservar</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -623,9 +633,7 @@ export default function QuadraPage() {
                       <span className="text-2xl font-bold text-gray-700">Sócio</span>
                     ) : quadra.precoPorHora != null ? (
                       <><span className="text-3xl font-bold">R$ {quadra.precoPorHora.toFixed(2)}</span><span className="text-gray-500 ml-2">/hora</span></>
-                    ) : (
-                      <span className="text-xl font-semibold text-gray-500">Consulte o preço</span>
-                    )}
+                    ) : null}
                   </div>
                   {quadra.telefone && (
                     <a href={`tel:${quadra.telefone}`} className="flex items-center gap-2 text-sm text-[#6AB945] hover:underline">
@@ -655,19 +663,6 @@ export default function QuadraPage() {
                     <p className="text-center text-xs text-gray-400 mt-1">
                       Entre em contato para verificar disponibilidade
                     </p>
-
-                    {quadra.precoPorHora != null && (
-                      <div className="mt-6 pt-6 border-t">
-                        <div className="flex justify-between mb-2">
-                          <span className="text-gray-600">Consulte o preço</span>
-                          <span>—</span>
-                        </div>
-                        <div className="flex justify-between font-semibold text-lg mt-4">
-                          <span>Total</span>
-                          <span>—</span>
-                        </div>
-                      </div>
-                    )}
                   </>
                 )}
 
