@@ -1154,7 +1154,7 @@ function AgendaTabs({
               const dateBookings = allBookings.filter(b => b.quadra_id === c.id && b.data === date);
               for (const b of dateBookings) {
                 const dur = b.duracao ?? 60;
-                const spanRows = Math.max(1, Math.floor(dur / step));
+                const spanRows = Math.max(1, Math.ceil(dur / step));
                 bookingAtStart.set(`${date}_${b.hora_inicio}`, b);
                 // Mark subsequent rows as spanned
                 const [hh, mm] = b.hora_inicio.split(":").map(Number);
@@ -1196,7 +1196,7 @@ function AgendaTabs({
                         const isMain = isHour || isHalf;
                         return (
                         <tr key={slot} className={`hover:bg-gray-50/50 ${isHour ? "border-t border-gray-200" : isHalf ? "border-t border-gray-100" : "border-t border-gray-50"}`}>
-                          <td className={`px-2 font-mono sticky left-0 bg-white border-r border-gray-100 ${isMain ? "py-1 font-semibold text-gray-400" : "py-0.5 text-gray-200"}`}>
+                          <td className={`px-2 font-mono sticky left-0 bg-white border-r border-gray-100 text-[11px] ${isMain ? "py-0.5 font-semibold text-gray-400" : "py-0 text-gray-200"}`}>
                             {isMain ? slot : ""}
                           </td>
                           {weekDates.map(date => {
@@ -1227,7 +1227,7 @@ function AgendaTabs({
 
                             if (booking) {
                               const dur = booking.duracao ?? 60;
-                              const spanRows = Math.max(1, Math.floor(dur / step));
+                              const spanRows = Math.max(1, Math.ceil(dur / step));
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
@@ -1247,7 +1247,7 @@ function AgendaTabs({
                                       const relY = e.clientY - rect.top;
                                       const slotIndex = Math.floor(relY / (rect.height / spanRows));
                                       const [hh, mm] = slot.split(":").map(Number);
-                                      const targetMin = hh * 60 + mm + slotIndex * 15;
+                                      const targetMin = hh * 60 + mm + slotIndex * step;
                                       const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
                                       setDragOverCell(`${date}_${targetSlot}`);
                                     }
@@ -1261,7 +1261,7 @@ function AgendaTabs({
                                       const relY = e.clientY - rect.top;
                                       const slotIndex = Math.floor(relY / (rect.height / spanRows));
                                       const [hh, mm] = slot.split(":").map(Number);
-                                      const targetMin = hh * 60 + mm + slotIndex * 15;
+                                      const targetMin = hh * 60 + mm + slotIndex * step;
                                       const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
                                       handleDropBooking(date, targetSlot);
                                     } else {
@@ -1279,7 +1279,7 @@ function AgendaTabs({
                                     className={`h-full rounded-lg flex flex-col items-start justify-center px-2 py-1 cursor-grab active:cursor-grabbing group relative ${
                                     isRecorrente ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"
                                   } ${draggingBooking?.id === booking.id ? "opacity-50" : ""}`}
-                                    style={{ minHeight: `${spanRows * 24}px` }}
+                                    style={{ minHeight: `${spanRows * 20}px` }}
                                     onClick={() => {
                                       if (draggingBooking) return;
                                       setEditingBooking(booking);
@@ -1363,7 +1363,7 @@ function AgendaTabs({
                                   setModalHora(slot);
                                   setBookingModal({ courtId: c.id, courtName: c.nome, date, hora: slot, mode: "create" });
                                 }}
-                                  className={`w-full h-5 rounded border border-dashed transition-colors ${
+                                  className={`w-full h-4 rounded border border-dashed transition-colors ${
                                     dragOverCell === cellDropKey
                                       ? "border-green-400 bg-green-100"
                                       : "border-transparent hover:border-green-300 hover:bg-green-50"
