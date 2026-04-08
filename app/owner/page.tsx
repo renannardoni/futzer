@@ -1146,6 +1146,15 @@ function AgendaTabs({
             });
             const allSlots15 = Array.from(allSlotsSet).sort();
 
+            // Determinar o step real entre os slots do calendário
+            const calStep = allSlots15.length >= 2
+              ? (() => {
+                  const [h1, m1] = allSlots15[0].split(":").map(Number);
+                  const [h2, m2] = allSlots15[1].split(":").map(Number);
+                  return (h2 * 60 + m2) - (h1 * 60 + m1);
+                })()
+              : step;
+
             // Pre-compute which cells to skip (spanned by a booking above)
             const spannedCells = new Set<string>();
             const bookingAtStart = new Map<string, typeof allBookings[0]>();
@@ -1154,13 +1163,13 @@ function AgendaTabs({
               const dateBookings = allBookings.filter(b => b.quadra_id === c.id && b.data === date);
               for (const b of dateBookings) {
                 const dur = b.duracao ?? 60;
-                const spanRows = Math.max(1, Math.ceil(dur / step));
+                const spanRows = Math.max(1, Math.ceil(dur / calStep));
                 bookingAtStart.set(`${date}_${b.hora_inicio}`, b);
                 // Mark subsequent rows as spanned
                 const [hh, mm] = b.hora_inicio.split(":").map(Number);
                 const startMin = hh * 60 + mm;
                 for (let i = 1; i < spanRows; i++) {
-                  const t = startMin + i * step;
+                  const t = startMin + i * calStep;
                   const spanSlot = `${String(Math.floor(t / 60)).padStart(2,"0")}:${String(t % 60).padStart(2,"0")}`;
                   spannedCells.add(`${date}_${spanSlot}`);
                 }
@@ -1227,7 +1236,7 @@ function AgendaTabs({
 
                             if (booking) {
                               const dur = booking.duracao ?? 60;
-                              const spanRows = Math.max(1, Math.ceil(dur / step));
+                              const spanRows = Math.max(1, Math.ceil(dur / calStep));
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
@@ -1247,7 +1256,7 @@ function AgendaTabs({
                                       const relY = e.clientY - rect.top;
                                       const slotIndex = Math.floor(relY / (rect.height / spanRows));
                                       const [hh, mm] = slot.split(":").map(Number);
-                                      const targetMin = hh * 60 + mm + slotIndex * step;
+                                      const targetMin = hh * 60 + mm + slotIndex * calStep;
                                       const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
                                       setDragOverCell(`${date}_${targetSlot}`);
                                     }
@@ -1261,7 +1270,7 @@ function AgendaTabs({
                                       const relY = e.clientY - rect.top;
                                       const slotIndex = Math.floor(relY / (rect.height / spanRows));
                                       const [hh, mm] = slot.split(":").map(Number);
-                                      const targetMin = hh * 60 + mm + slotIndex * step;
+                                      const targetMin = hh * 60 + mm + slotIndex * calStep;
                                       const targetSlot = `${String(Math.floor(targetMin / 60)).padStart(2,"0")}:${String(targetMin % 60).padStart(2,"0")}`;
                                       handleDropBooking(date, targetSlot);
                                     } else {
