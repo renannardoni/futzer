@@ -9,7 +9,7 @@ import {
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
   addBooking, updateBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
-  generateAllSlots, slotsOcupados, DURACAO_OPTIONS,
+  generateAllSlots, slotsOcupados, DURACAO_OPTIONS, DISCRETIZACAO_OPTIONS,
 
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
   DEFAULT_HORARIOS_SEMANAIS,
@@ -64,6 +64,7 @@ type ArenaForm = {
   lat: string; lng: string; imagemCapa: string; imagens: string[];
   mostrarDisponibilidade: boolean;
   duracaoMinima: string;
+  discretizacaoMinima: string;
 };
 
 function fromArena(a: Quadra): ArenaForm {
@@ -72,6 +73,7 @@ function fromArena(a: Quadra): ArenaForm {
     telefone: a.telefone ?? "", precoPorHora: a.precoPorHora?.toString() ?? "",
     mostrarDisponibilidade: a.mostrarDisponibilidade ?? false,
     duracaoMinima: a.duracaoMinima?.toString() ?? "",
+    discretizacaoMinima: a.discretizacaoMinima?.toString() ?? "15",
     rua: a.endereco.rua, cidade: a.endereco.cidade,
     estado: a.endereco.estado, cep: a.endereco.cep,
     lat: a.coordenadas.lat.toString(), lng: a.coordenadas.lng.toString(),
@@ -139,6 +141,7 @@ function ArenaSettingsPanel({
         coordenadas: { lat: parseFloat(form.lat) || 0, lng: parseFloat(form.lng) || 0 },
         mostrarDisponibilidade: form.mostrarDisponibilidade,
         duracaoMinima: form.duracaoMinima ? parseInt(form.duracaoMinima) : null,
+        discretizacaoMinima: form.discretizacaoMinima ? parseInt(form.discretizacaoMinima) : 15,
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = await updateQuadra(arena.id, payload as any);
@@ -188,6 +191,14 @@ function ArenaSettingsPanel({
                 <select value={form.duracaoMinima} onChange={e => setForm(prev => ({ ...prev, duracaoMinima: e.target.value }))} className={inp}>
                   <option value="">Sem mínimo</option>
                   {DURACAO_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Discretização mínima</label>
+                <select value={form.discretizacaoMinima} onChange={e => setForm(prev => ({ ...prev, discretizacaoMinima: e.target.value }))} className={inp}>
+                  {DISCRETIZACAO_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
@@ -344,10 +355,10 @@ function ArenaSettingsPanel({
 // ── Court edit panel (inline, below tabs) ────────────────────────────────────
 
 function CourtEditPanel({
-  court, arenaId,
+  court, arenaId, step = 15,
   onSave, onDelete, onClose,
 }: {
-  court: SubQuadra; arenaId: string;
+  court: SubQuadra; arenaId: string; step?: number;
   onSave: (c: SubQuadra) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [nome, setNome] = useState(court.nome);
@@ -435,7 +446,7 @@ function CourtEditPanel({
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-2">Horários disponíveis</label>
         <div className="bg-white rounded-lg p-3 border border-gray-200">
-          <HorariosForm horariosSemanais={horarios} onChange={setHorarios} />
+          <HorariosForm horariosSemanais={horarios} step={step} onChange={setHorarios} />
         </div>
       </div>
 
@@ -459,7 +470,7 @@ function CourtEditPanel({
 
 const EMPTY_ARENA: ArenaForm = {
   nome: "", descricao: "", telefone: "", precoPorHora: "", mostrarDisponibilidade: false,
-  duracaoMinima: "",
+  duracaoMinima: "", discretizacaoMinima: "15",
   rua: "", cidade: "", estado: "", cep: "", lat: "", lng: "", imagemCapa: "", imagens: [],
 };
 
@@ -582,6 +593,7 @@ function AgendaTabs({
   onDateChange: (d: string) => void;
   onBookingChange: () => Promise<unknown>;
 }) {
+  const step = arena.discretizacaoMinima ?? 15;
   const [tab, setTab] = useState<AgendaTab>("horario");
   const [bookingCell, setBookingCell] = useState<{ courtId: string; hora: string } | null>(null);
   const [bookingForm, setBookingForm] = useState({ nome: "", tel: "", valor: "" });
@@ -911,7 +923,7 @@ function AgendaTabs({
                     const isUnavailable = !selectedHora || !courtSlots.includes(selectedHora);
                     const booking = dayBookings.find(b => {
                       if (b.quadra_id !== c.id) return false;
-                      const occupied = slotsOcupados(b.hora_inicio, b.duracao ?? 60);
+                      const occupied = slotsOcupados(b.hora_inicio, b.duracao ?? 60, step);
                       return occupied.includes(selectedHora!);
                     });
                     const isSelected = bookingCell?.courtId === c.id && bookingCell?.hora === selectedHora;
@@ -1110,13 +1122,13 @@ function AgendaTabs({
               const dateBookings = allBookings.filter(b => b.quadra_id === c.id && b.data === date);
               for (const b of dateBookings) {
                 const dur = b.duracao ?? 60;
-                const spanRows = Math.max(1, Math.floor(dur / 15));
+                const spanRows = Math.max(1, Math.floor(dur / step));
                 bookingAtStart.set(`${date}_${b.hora_inicio}`, b);
-                // Mark subsequent 15-min rows as spanned
+                // Mark subsequent rows as spanned
                 const [hh, mm] = b.hora_inicio.split(":").map(Number);
                 const startMin = hh * 60 + mm;
                 for (let i = 1; i < spanRows; i++) {
-                  const t = startMin + i * 15;
+                  const t = startMin + i * step;
                   const spanSlot = `${String(Math.floor(t / 60)).padStart(2,"0")}:${String(t % 60).padStart(2,"0")}`;
                   spannedCells.add(`${date}_${spanSlot}`);
                 }
@@ -1183,7 +1195,7 @@ function AgendaTabs({
 
                             if (booking) {
                               const dur = booking.duracao ?? 60;
-                              const spanRows = Math.max(1, Math.floor(dur / 15));
+                              const spanRows = Math.max(1, Math.floor(dur / step));
                               const duracaoLabel = DURACAO_OPTIONS.find(o => o.value === dur)?.label ?? `${dur}min`;
                               const isRecorrente = !!booking.recorrencia_grupo_id;
                               const showingDeleteConfirm = deleteRecConfirm?.bookingId === booking.id;
@@ -1299,7 +1311,7 @@ function AgendaTabs({
                             // Check if this slot is occupied by a booking but not the start (shouldn't happen since we handle spannedCells, but fallback)
                             const occupyingBooking = allBookings.find(b => {
                               if (b.quadra_id !== c.id || b.data !== date) return false;
-                              return slotsOcupados(b.hora_inicio, b.duracao ?? 60).includes(slot);
+                              return slotsOcupados(b.hora_inicio, b.duracao ?? 60, step).includes(slot);
                             });
                             if (occupyingBooking && !booking) {
                               // Already handled by rowSpan, skip
@@ -2005,7 +2017,7 @@ function Dashboard({ user }: { user: User }) {
                 const c = courts.find(c => c.id === editingCourtId);
                 return c ? (
                   <CourtEditPanel
-                    key={c.id} court={c} arenaId={selectedArena.id}
+                    key={c.id} court={c} arenaId={selectedArena.id} step={selectedArena.discretizacaoMinima ?? 15}
                     onSave={() => { refreshArena(); }}
                     onDelete={() => { refreshArena(); setSelectedCourtId(null); }}
                     onClose={() => setEditingCourtId(null)}

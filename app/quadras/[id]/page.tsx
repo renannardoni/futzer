@@ -33,6 +33,7 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   const [selectedCourtId, setSelectedCourtId] = useState(courts[0]?.id ?? "");
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const minDuracao = quadra.duracaoMinima ?? 0;
+  const step = quadra.discretizacaoMinima ?? 15;
   const duracaoOptions = DURACAO_OPTIONS.filter(o => o.value >= minDuracao);
   const [selectedDuracao, setSelectedDuracao] = useState(Math.max(60, minDuracao));
 
@@ -64,16 +65,16 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   // Pre-compute occupied slots
   const occupiedSet = new Set<string>();
   dayReservas.forEach(r => {
-    slotsOcupados(r.hora_inicio, r.duracao ?? 60).forEach(s => occupiedSet.add(s));
+    slotsOcupados(r.hora_inicio, r.duracao ?? 60, step).forEach(s => occupiedSet.add(s));
   });
 
   // Check if selecting a slot with current duration would conflict
   function wouldConflict(slot: string) {
     const [sh, sm] = slot.split(":").map(Number);
     const startMin = sh * 60 + sm;
-    const slotsNeeded = Math.floor(selectedDuracao / 15);
+    const slotsNeeded = Math.floor(selectedDuracao / step);
     for (let i = 0; i < slotsNeeded; i++) {
-      const t = startMin + i * 15;
+      const t = startMin + i * step;
       const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
       if (occupiedSet.has(s) || !availableSlots.includes(s)) return true;
     }
@@ -87,9 +88,9 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   if (selectedSlot) {
     const [sh, sm] = selectedSlot.split(":").map(Number);
     const startMin = sh * 60 + sm;
-    const slotsNeeded = Math.floor(selectedDuracao / 15);
+    const slotsNeeded = Math.floor(selectedDuracao / step);
     for (let i = 0; i < slotsNeeded; i++) {
-      const t = startMin + i * 15;
+      const t = startMin + i * step;
       const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
       selectedBlockSlots.add(s);
       if (occupiedSet.has(s) || (i > 0 && !availableSlots.includes(s))) {
@@ -238,78 +239,94 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
             </div>
           ) : (() => {
             const sortedSlots = [...availableSlots].sort();
+            const isRegular = step <= 60 && 60 % step === 0;
+            const colsPerHour = isRegular ? 60 / step : 1;
+            const subMinutes = isRegular
+              ? Array.from({ length: colsPerHour }, (_, i) => String(i * step).padStart(2, "0"))
+              : [];
 
-            // Group slots by hour for visual grouping
-            const hourGroups: { hour: string; slots: string[] }[] = [];
-            sortedSlots.forEach(slot => {
-              const hour = slot.split(":")[0] + ":00";
-              const last = hourGroups[hourGroups.length - 1];
-              if (last && last.hour === hour) {
-                last.slots.push(slot);
-              } else {
-                hourGroups.push({ hour, slots: [slot] });
-              }
-            });
+            // Render slot button helper
+            const renderSlot = (slot: string, key: string) => {
+              const isInBlock = selectedBlockSlots.has(slot);
+              const isConflictSlot = selectedConflictSlots.has(slot);
+              const isOccupied = occupiedSet.has(slot);
+              const isSelected = selectedSlot === slot;
 
-            return (
-              <div className="space-y-1">
-                {hourGroups.map(group => (
-                  <div key={group.hour} className="flex items-start gap-2">
-                    {/* Hour label */}
-                    <span className="w-11 text-xs font-semibold text-gray-500 pt-1.5 shrink-0 font-mono">
-                      {group.hour}
-                    </span>
-                    {/* 15-min cells in a row */}
-                    <div className="flex-1 grid grid-cols-4 gap-0.5">
-                      {["00", "15", "30", "45"].map(mm => {
-                        const slot = group.hour.split(":")[0] + ":" + mm;
-                        const exists = group.slots.includes(slot);
-                        const isInBlock = selectedBlockSlots.has(slot);
-                        const isConflictSlot = selectedConflictSlots.has(slot);
-
-                        // Slot outside available range but part of selected block
-                        if (!exists && isInBlock) {
-                          return (
-                            <div key={mm} className={`h-9 rounded-md ${isConflictSlot ? "bg-red-100 ring-2 ring-red-300" : "bg-green-100"}`} />
-                          );
-                        }
-                        if (!exists) {
-                          return <div key={mm} className="h-9" />;
-                        }
-
-                        const isOccupied = occupiedSet.has(slot);
-                        const isSelected = selectedSlot === slot;
-
-                        // Occupied slot that's also in selected block = conflict highlight
-                        if (isOccupied) {
-                          return (
-                            <div key={mm} className={`h-9 rounded-md relative overflow-hidden ${isConflictSlot ? "ring-2 ring-red-400" : ""}`} title="Ocupado">
-                              <div className="absolute inset-0" style={{
-                                background: isConflictSlot
-                                  ? "repeating-linear-gradient(45deg, #fee2e2, #fee2e2 3px, #fecaca 3px, #fecaca 6px)"
-                                  : "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
-                              }} />
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <button key={mm} type="button"
-                            onClick={() => setSelectedSlot(slot)}
-                            className={`h-9 rounded-md text-xs font-semibold transition-all ${
-                              isSelected
-                                ? "bg-green-600 text-white ring-2 ring-green-300 shadow-sm"
-                                : isInBlock
-                                  ? "bg-green-200 text-green-800 border border-green-300"
-                                  : "bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 hover:border-green-400 active:bg-green-200"
-                            }`}>
-                            {slot}
-                          </button>
-                        );
-                      })}
-                    </div>
+              if (isOccupied) {
+                return (
+                  <div key={key} className={`h-9 rounded-md relative overflow-hidden ${isConflictSlot ? "ring-2 ring-red-400" : ""}`} title="Ocupado">
+                    <div className="absolute inset-0" style={{
+                      background: isConflictSlot
+                        ? "repeating-linear-gradient(45deg, #fee2e2, #fee2e2 3px, #fecaca 3px, #fecaca 6px)"
+                        : "repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)",
+                    }} />
                   </div>
-                ))}
+                );
+              }
+
+              return (
+                <button key={key} type="button"
+                  onClick={() => setSelectedSlot(slot)}
+                  className={`h-9 rounded-md text-xs font-semibold transition-all ${
+                    isSelected
+                      ? "bg-green-600 text-white ring-2 ring-green-300 shadow-sm"
+                      : isInBlock
+                        ? "bg-green-200 text-green-800 border border-green-300"
+                        : "bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 hover:border-green-400 active:bg-green-200"
+                  }`}>
+                  {slot}
+                </button>
+              );
+            };
+
+            // Regular steps (15, 30, 60): grouped by hour
+            if (isRegular) {
+              const hourGroups: { hour: string; slots: string[] }[] = [];
+              sortedSlots.forEach(slot => {
+                const hour = slot.split(":")[0] + ":00";
+                const last = hourGroups[hourGroups.length - 1];
+                if (last && last.hour === hour) {
+                  last.slots.push(slot);
+                } else {
+                  hourGroups.push({ hour, slots: [slot] });
+                }
+              });
+
+              return (
+                <div className="space-y-1">
+                  {hourGroups.map(group => (
+                    <div key={group.hour} className="flex items-start gap-2">
+                      <span className="w-11 text-xs font-semibold text-gray-500 pt-1.5 shrink-0 font-mono">
+                        {group.hour}
+                      </span>
+                      <div className={`flex-1 grid gap-0.5`} style={{ gridTemplateColumns: `repeat(${colsPerHour}, minmax(0, 1fr))` }}>
+                        {subMinutes.map(mm => {
+                          const slot = group.hour.split(":")[0] + ":" + mm;
+                          const exists = group.slots.includes(slot);
+                          const isInBlock = selectedBlockSlots.has(slot);
+                          const isConflictSlot = selectedConflictSlots.has(slot);
+
+                          if (!exists && isInBlock) {
+                            return (
+                              <div key={mm} className={`h-9 rounded-md ${isConflictSlot ? "bg-red-100 ring-2 ring-red-300" : "bg-green-100"}`} />
+                            );
+                          }
+                          if (!exists) {
+                            return <div key={mm} className="h-9" />;
+                          }
+                          return renderSlot(slot, mm);
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            // Irregular steps (45, 75, 90, 120): flat grid
+            return (
+              <div className="grid grid-cols-3 gap-1">
+                {sortedSlots.map(slot => renderSlot(slot, slot))}
               </div>
             );
           })()}

@@ -95,26 +95,25 @@ export interface Reserva {
   recorrencia_grupo_id?: string | null; // UUID para agrupar reservas recorrentes
 }
 
-// Gera os slots de 15 min ocupados por uma reserva
-export function slotsOcupados(horaInicio: string, duracao: number): string[] {
+// Gera os slots ocupados por uma reserva
+export function slotsOcupados(horaInicio: string, duracao: number, step = 15): string[] {
   const [h, m] = horaInicio.split(":").map(Number);
   const totalMin = h * 60 + m;
   const slots: string[] = [];
-  for (let offset = 0; offset < duracao; offset += 15) {
+  for (let offset = 0; offset < duracao; offset += step) {
     const t = totalMin + offset;
     slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
   }
   return slots;
 }
 
-// Gera todos os slots de 15 min entre startHour e endHour
-export function generateAllSlots(startHour = 6, endHour = 23): string[] {
+// Gera todos os slots entre startHour e endHour com step configurável
+export function generateAllSlots(startHour = 6, endHour = 23, step = 15): string[] {
   const slots: string[] = [];
-  for (let h = startHour; h <= endHour; h++) {
-    for (let m = 0; m < 60; m += 15) {
-      if (h === endHour && m > 0) break;
-      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-    }
+  const startMin = startHour * 60;
+  const endMin = endHour * 60;
+  for (let t = startMin; t < endMin; t += step) {
+    slots.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
   }
   return slots;
 }
@@ -130,6 +129,16 @@ export const DURACAO_OPTIONS = [
   { value: 180, label: "3h" },
   { value: 210, label: "3h30" },
   { value: 240, label: "4h" },
+];
+
+export const DISCRETIZACAO_OPTIONS = [
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 45, label: "45 min" },
+  { value: 60, label: "1h" },
+  { value: 75, label: "1h15" },
+  { value: 90, label: "1h30" },
+  { value: 120, label: "2h" },
 ];
 
 export interface Quadra {
@@ -150,6 +159,7 @@ export interface Quadra {
   ativo?: boolean;
   mostrarDisponibilidade?: boolean;
   duracaoMinima?: number | null;
+  discretizacaoMinima?: number | null;
   horariosSemanais?: HorariosSemanais;
   datasBloqueadas?: string[];
   quadrasInternas?: SubQuadra[];

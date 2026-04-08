@@ -18,13 +18,13 @@ function fromMinutes(total: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-/** Gera todos os slots de 15 min entre inicio (inclusive) e fim (exclusive). */
-function generateSlots(inicio: string, fim: string): string[] {
+/** Gera todos os slots entre inicio (inclusive) e fim (exclusive) com step configurável. */
+function generateSlots(inicio: string, fim: string, step = 15): string[] {
   const startMin = toMinutes(inicio);
   const endMin = toMinutes(fim);
   if (startMin >= endMin) return [];
   const slots: string[] = [];
-  for (let t = startMin; t < endMin; t += 15) {
+  for (let t = startMin; t < endMin; t += step) {
     slots.push(fromMinutes(t));
   }
   return slots;
@@ -58,7 +58,7 @@ const DEFAULT_RANGE: DayRange = {
 
 // ── Detectar ranges a partir de slots existentes ──
 
-function detectRangesFromSlots(slots: string[]): DayRange {
+function detectRangesFromSlots(slots: string[], step = 15): DayRange {
   if (!slots || slots.length === 0) return { ...DEFAULT_RANGE, ativo: false };
 
   const sorted = [...slots].sort();
@@ -68,7 +68,7 @@ function detectRangesFromSlots(slots: string[]): DayRange {
   const rangeFrom = (arr: string[], fallbackInicio: string, fallbackFim: string) => {
     if (arr.length === 0) return { inicio: fallbackInicio, fim: fallbackFim };
     const first = arr[0];
-    const lastMin = toMinutes(arr[arr.length - 1]) + 15; // fim é exclusive
+    const lastMin = toMinutes(arr[arr.length - 1]) + step; // fim é exclusive
     return { inicio: first, fim: fromMinutes(lastMin) };
   };
 
@@ -81,10 +81,10 @@ function detectRangesFromSlots(slots: string[]): DayRange {
 
 // ── Gerar slots a partir dos ranges ──
 
-function slotsFromRanges(range: DayRange): string[] {
+function slotsFromRanges(range: DayRange, step = 15): string[] {
   if (!range.ativo) return [];
-  const manha = generateSlots(range.manha.inicio, range.manha.fim);
-  const tarde = generateSlots(range.tarde.inicio, range.tarde.fim);
+  const manha = generateSlots(range.manha.inicio, range.manha.fim, step);
+  const tarde = generateSlots(range.tarde.inicio, range.tarde.fim, step);
   return [...manha, ...tarde].sort();
 }
 
@@ -93,16 +93,17 @@ function slotsFromRanges(range: DayRange): string[] {
 interface Props {
   horariosSemanais: HorariosSemanais;
   datasBloqueadas?: string[];
+  step?: number;
   onChange: (horarios: HorariosSemanais) => void;
 }
 
-export function HorariosForm({ horariosSemanais, onChange }: Props) {
+export function HorariosForm({ horariosSemanais, step = 15, onChange }: Props) {
   // Inicializar ranges a partir dos slots existentes
   const [ranges, setRanges] = useState<Record<DayKey, DayRange>>(() => {
     const initial: Record<string, DayRange> = {};
     for (const { key } of DIAS) {
       const slots = horariosSemanais?.[key]?.slots ?? [];
-      initial[key] = detectRangesFromSlots(slots);
+      initial[key] = detectRangesFromSlots(slots, step);
     }
     return initial as Record<DayKey, DayRange>;
   });
@@ -110,10 +111,10 @@ export function HorariosForm({ horariosSemanais, onChange }: Props) {
   const emitChange = useCallback((newRanges: Record<DayKey, DayRange>) => {
     const horarios: Record<string, HorarioDia> = {};
     for (const { key } of DIAS) {
-      horarios[key] = { slots: slotsFromRanges(newRanges[key]) };
+      horarios[key] = { slots: slotsFromRanges(newRanges[key], step) };
     }
     onChange(horarios as unknown as HorariosSemanais);
-  }, [onChange]);
+  }, [onChange, step]);
 
   function updateDay(key: DayKey, partial: Partial<DayRange>) {
     setRanges(prev => {
@@ -161,7 +162,7 @@ export function HorariosForm({ horariosSemanais, onChange }: Props) {
 
       {DIAS.map(({ key, label }) => {
         const day = ranges[key];
-        const slotCount = slotsFromRanges(day).length;
+        const slotCount = slotsFromRanges(day, step).length;
 
         return (
           <div
