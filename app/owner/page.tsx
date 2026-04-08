@@ -8,7 +8,7 @@ import {
   getMinhasQuadras, createQuadra, updateQuadra, deleteQuadra,
   uploadImage, logout,
   addCourt, updateCourt, deleteCourt,
-  addBooking, updateBooking, deleteBooking, addRecurrentBooking, deleteBookingGroup,
+  addBooking, updateBooking, updateBookingGroup, deleteBooking, addRecurrentBooking, deleteBookingGroup,
   generateAllSlots, slotsOcupados, DURACAO_OPTIONS, DISCRETIZACAO_OPTIONS,
 
   type Quadra, type SubQuadra, type Reserva, type User, type HorariosSemanais,
@@ -604,6 +604,7 @@ function AgendaTabs({
   const [deleteSerieConfirm, setDeleteSerieConfirm] = useState<string | null>(null); // grupoId aguardando confirmação final
   const [editingBooking, setEditingBooking] = useState<Reserva | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", tel: "", valor: "" });
+  const [editSerieConfirm, setEditSerieConfirm] = useState(false);
   const [bookingModal, setBookingModal] = useState<{
     courtId: string; courtName: string; date: string; hora: string;
     mode: "create" | "edit"; booking?: Reserva;
@@ -649,6 +650,37 @@ function AgendaTabs({
   const duracaoOptions = DURACAO_OPTIONS.filter(o => o.value >= minDuracao);
 
   // ── Booking handlers ──
+  async function handleEditSaveDirect(scope: "single" | "series") {
+    if (!editingBooking) return;
+    const horaChanged = modalHora !== editingBooking.hora_inicio;
+    const payload = {
+      nome_cliente: editForm.nome.trim(),
+      telefone: editForm.tel.trim() || undefined,
+      valor: editForm.valor ? parseFloat(editForm.valor) : undefined,
+      duracao: bookingDuracao,
+      ...(horaChanged ? { hora_inicio: modalHora } : {}),
+    };
+    setBookingLoading(true);
+    try {
+      if (scope === "series" && editingBooking.recorrencia_grupo_id) {
+        const result = await updateBookingGroup(arena.id, editingBooking.recorrencia_grupo_id, payload);
+        if (result.conflitos > 0) {
+          setBookingError(`${result.updated} atualizadas, ${result.conflitos} com conflito`);
+          setTimeout(() => setBookingError(""), 5000);
+        }
+      } else {
+        await updateBooking(arena.id, editingBooking.id, payload);
+      }
+      await onBookingChange();
+      setEditingBooking(null);
+      setEditSerieConfirm(false);
+      setBookingModal(null);
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao salvar");
+      setTimeout(() => setBookingError(""), 5000);
+    } finally { setBookingLoading(false); }
+  }
+
   async function handleAddBooking(courtId: string, horaInicio: string, duracao: number = bookingDuracao) {
     if (!bookingForm.nome.trim()) return;
     setBookingLoading(true);
@@ -1634,24 +1666,13 @@ function AgendaTabs({
             await handleOutlookBooking(bookingModal!.courtId, date, modalHora);
             setBookingModal(null);
           } else if (editingBooking) {
-            // If hora changed, update it too
-            const horaChanged = modalHora !== editingBooking.hora_inicio;
-            setBookingLoading(true);
-            try {
-              await updateBooking(arena.id, editingBooking.id, {
-                nome_cliente: editForm.nome.trim(),
-                telefone: editForm.tel.trim() || undefined,
-                valor: editForm.valor ? parseFloat(editForm.valor) : undefined,
-                duracao: bookingDuracao,
-                ...(horaChanged ? { hora_inicio: modalHora } : {}),
-              });
-              await onBookingChange();
-              setEditingBooking(null);
-              setBookingModal(null);
-            } catch (err) {
-              setBookingError(err instanceof Error ? err.message : "Erro ao salvar");
-              setTimeout(() => setBookingError(""), 5000);
-            } finally { setBookingLoading(false); }
+            if (editingBooking.recorrencia_grupo_id) {
+              // Recorrente → perguntar "só esta" ou "série toda"
+              setEditSerieConfirm(true);
+              return;
+            }
+            // Não recorrente → salva direto
+            await handleEditSaveDirect("single");
           }
         }
 
@@ -1762,6 +1783,32 @@ function AgendaTabs({
           </div>
         );
       })()}
+
+      {/* Modal de confirmação para editar recorrente: só esta ou série toda */}
+      {editSerieConfirm && editingBooking && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]" onClick={() => setEditSerieConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-800">Alterar reserva recorrente</h3>
+            <p className="text-sm text-gray-600">
+              Esta reserva faz parte de uma série. Deseja alterar apenas esta ou toda a série?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => { setEditSerieConfirm(false); await handleEditSaveDirect("single"); }}
+                disabled={bookingLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+                {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Só esta"}
+              </button>
+              <button
+                onClick={async () => { setEditSerieConfirm(false); await handleEditSaveDirect("series"); }}
+                disabled={bookingLoading}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
+                {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Série toda"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmação para excluir série toda */}
       {deleteSerieConfirm && (

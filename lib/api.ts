@@ -569,6 +569,20 @@ export async function addRecurrentBooking(
   return res.json();
 }
 
+export async function updateBookingGroup(
+  arenaId: string, grupoId: string,
+  data: Partial<Pick<Reserva, 'nome_cliente' | 'telefone' | 'valor' | 'hora_inicio' | 'duracao'>>
+): Promise<{ updated: number; conflitos: number; conflitos_datas: string[] }> {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/group/${grupoId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || 'Erro ao atualizar série');
+  return res.json();
+}
+
 export async function deleteBookingGroup(arenaId: string, grupoId: string): Promise<void> {
   const token = getToken();
   const res = await fetch(`${API_URL}/quadras/${arenaId}/bookings/group/${grupoId}`, {
