@@ -612,6 +612,7 @@ function AgendaTabs({
   const [modalHora, setModalHora] = useState<string>("");
   const [draggingBooking, setDraggingBooking] = useState<Reserva | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null); // "date_slot"
+  const [pendingDrop, setPendingDrop] = useState<{ booking: Reserva; targetDate: string; targetSlot: string } | null>(null);
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
 
   // Outlook state
@@ -791,33 +792,56 @@ function AgendaTabs({
       setDragOverCell(null);
       return;
     }
-    // Optimistic update: mover visualmente antes da API responder
-    const oldData = draggingBooking.data;
-    const oldHora = draggingBooking.hora_inicio;
-    const bookingId = draggingBooking.id;
-    // Atualizar reservas localmente
-    const updatedReservas = (arena.reservas ?? []).map(r =>
+    // Recorrente → perguntar "só esta" ou "série toda"
+    if (draggingBooking.recorrencia_grupo_id) {
+      setPendingDrop({ booking: draggingBooking, targetDate, targetSlot });
+      setDraggingBooking(null);
+      setDragOverCell(null);
+      return;
+    }
+    await executeDropSingle(draggingBooking, targetDate, targetSlot);
+  }
+
+  async function executeDropSingle(booking: Reserva, targetDate: string, targetSlot: string) {
+    const oldData = booking.data;
+    const oldHora = booking.hora_inicio;
+    const bookingId = booking.id;
+    arena.reservas = (arena.reservas ?? []).map(r =>
       r.id === bookingId ? { ...r, data: targetDate, hora_inicio: targetSlot } : r
     );
-    // Forçar re-render imediato via onBookingChange pattern
-    arena.reservas = updatedReservas;
     setDraggingBooking(null);
     setDragOverCell(null);
-    // Chamar API em background
     try {
       await updateBooking(arena.id, bookingId, {
         data: targetDate,
         hora_inicio: targetSlot,
       });
-      await onBookingChange(); // sync com servidor
+      await onBookingChange();
     } catch (err) {
-      // Reverter optimistic update
       arena.reservas = (arena.reservas ?? []).map(r =>
         r.id === bookingId ? { ...r, data: oldData, hora_inicio: oldHora } : r
       );
       setBookingError(err instanceof Error ? err.message : "Erro ao mover reserva");
       setTimeout(() => setBookingError(""), 5000);
-      await onBookingChange(); // re-sync
+      await onBookingChange();
+    }
+  }
+
+  async function executeDropSeries(booking: Reserva, targetSlot: string) {
+    if (!booking.recorrencia_grupo_id) return;
+    try {
+      const result = await updateBookingGroup(arena.id, booking.recorrencia_grupo_id, {
+        hora_inicio: targetSlot,
+      });
+      if (result.conflitos > 0) {
+        setBookingError(`${result.updated} movidas, ${result.conflitos} com conflito`);
+        setTimeout(() => setBookingError(""), 5000);
+      }
+      await onBookingChange();
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Erro ao mover série");
+      setTimeout(() => setBookingError(""), 5000);
+      await onBookingChange();
     }
   }
 
@@ -1793,9 +1817,9 @@ function AgendaTabs({
         );
       })()}
 
-      {/* Modal de confirmação para editar recorrente: só esta ou série toda */}
-      {editSerieConfirm && editingBooking && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]" onClick={() => setEditSerieConfirm(false)}>
+      {/* Modal de confirmação para editar/mover recorrente: só esta ou série toda */}
+      {(editSerieConfirm && editingBooking || pendingDrop) && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60]" onClick={() => { setEditSerieConfirm(false); setPendingDrop(null); }}>
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm mx-4 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-800">Alterar reserva recorrente</h3>
             <p className="text-sm text-gray-600">
@@ -1803,13 +1827,31 @@ function AgendaTabs({
             </p>
             <div className="flex gap-3">
               <button
-                onClick={async () => { setEditSerieConfirm(false); await handleEditSaveDirect("single"); }}
+                onClick={async () => {
+                  if (pendingDrop) {
+                    const { booking, targetDate, targetSlot } = pendingDrop;
+                    setPendingDrop(null);
+                    await executeDropSingle(booking, targetDate, targetSlot);
+                  } else {
+                    setEditSerieConfirm(false);
+                    await handleEditSaveDirect("single");
+                  }
+                }}
                 disabled={bookingLoading}
                 className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
                 {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Só esta"}
               </button>
               <button
-                onClick={async () => { setEditSerieConfirm(false); await handleEditSaveDirect("series"); }}
+                onClick={async () => {
+                  if (pendingDrop) {
+                    const { booking, targetSlot } = pendingDrop;
+                    setPendingDrop(null);
+                    await executeDropSeries(booking, targetSlot);
+                  } else {
+                    setEditSerieConfirm(false);
+                    await handleEditSaveDirect("series");
+                  }
+                }}
                 disabled={bookingLoading}
                 className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">
                 {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Série toda"}
