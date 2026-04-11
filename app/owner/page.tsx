@@ -1732,101 +1732,100 @@ function AgendaTabs({
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
             onClick={() => setBookingModal(null)}
             onKeyDown={e => e.key === "Escape" && setBookingModal(null)}>
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className={`${isPastDate ? "bg-amber-500" : "bg-green-600"} px-4 py-2.5 text-white`}>
+              <div className={`${isPastDate ? "bg-amber-500" : "bg-green-600"} px-5 py-4 text-white`}>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">{isCreate ? "Nova Reserva" : "Editar Reserva"}</h3>
-                  <button onClick={() => setBookingModal(null)} className="p-0.5 hover:bg-white/20 rounded transition-colors">
-                    <X className="w-4 h-4" />
+                  <h3 className="text-lg font-semibold">{isCreate ? "Nova Reserva" : "Editar Reserva"}</h3>
+                  <button onClick={() => setBookingModal(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-green-100 text-xs">
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {dateLabel}</span>
-                  <span>·</span>
+                <div className="flex items-center gap-3 mt-2 text-green-100 text-sm">
+                  <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {dateLabel}</span>
                   <span>{courtName}</span>
                 </div>
               </div>
 
               {/* Aviso de data passada */}
               {isPastDate && (
-                <div className="mx-4 mt-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded flex items-start gap-1.5">
-                  <Clock className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-                  <span className="text-[10px] text-amber-700">
-                    Esta data já passou. Reserva apenas para controle.
+                <div className="mx-5 mt-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <span className="text-xs text-amber-700">
+                    Esta data já passou. A reserva será registrada apenas para controle.
                   </span>
                 </div>
               )}
 
               {/* Body */}
-              <div className={`px-4 ${isPastDate ? "pt-2" : "pt-3"} pb-3 space-y-2.5`}>
-                {/* Horário + Duração */}
-                <div className="grid grid-cols-[auto_1fr] gap-2 items-start">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Início</label>
-                    <TimeInput
-                      value={modalHora}
-                      onChange={val => setModalHora(val)}
-                      className="w-[90px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Duração</label>
-                    <div className="flex flex-wrap gap-1">
-                      {duracaoOptions.map(opt => (
-                        <button key={opt.value}
-                          onClick={() => setBookingDuracao(opt.value)}
-                          className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
-                            bookingDuracao === opt.value
-                              ? "bg-green-600 text-white"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
+              <div className={`px-5 ${isPastDate ? "pt-2" : "pt-4"} pb-4 space-y-4`}>
+                {/* Horário de início */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Horário de início</label>
+                  <TimeInput
+                    value={modalHora}
+                    onChange={val => setModalHora(val)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Duração */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Duração</label>
+                  <div className="flex flex-wrap gap-2">
+                    {duracaoOptions.map(opt => (
+                      <button key={opt.value}
+                        onClick={() => setBookingDuracao(opt.value)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          bookingDuracao === opt.value
+                            ? "bg-green-600 text-white shadow-sm"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}>
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Nome */}
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Nome *</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nome *</label>
                   <input autoFocus value={form.nome}
                     onChange={e => setForm(p => ({ ...p, nome: e.target.value }))}
                     onKeyDown={e => e.key === "Enter" && handleSubmit()}
                     placeholder="Nome do cliente"
-                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                 </div>
 
-                {/* Telefone + Valor */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Telefone</label>
-                    <input value={form.tel}
-                      onChange={e => setForm(p => ({ ...p, tel: e.target.value }))}
-                      placeholder="(00) 00000-0000"
-                      className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Valor (R$)</label>
-                    <input value={form.valor} type="number" step="0.01"
-                      onChange={e => setForm(p => ({ ...p, valor: e.target.value }))}
-                      onKeyDown={e => e.key === "Enter" && handleSubmit()}
-                      placeholder="0,00"
-                      className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
-                  </div>
+                {/* Telefone */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Telefone</label>
+                  <input value={form.tel}
+                    onChange={e => setForm(p => ({ ...p, tel: e.target.value }))}
+                    placeholder="(00) 00000-0000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
+                </div>
+
+                {/* Valor */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Valor (R$)</label>
+                  <input value={form.valor} type="number" step="0.01"
+                    onChange={e => setForm(p => ({ ...p, valor: e.target.value }))}
+                    onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                    placeholder="0,00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-2.5 bg-gray-50 flex justify-end gap-2 border-t border-gray-100">
+              <div className="px-5 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
                 <button onClick={() => setBookingModal(null)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                   Cancelar
                 </button>
                 <button onClick={handleSubmit} disabled={bookingLoading || !form.nome.trim()}
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-1.5">
-                  {bookingLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2">
+                  {bookingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {isCreate ? "Reservar" : "Salvar"}
                 </button>
               </div>
