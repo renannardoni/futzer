@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { type HorariosSemanais, type HorarioDia, DEFAULT_HORARIOS_SEMANAIS } from "@/lib/api";
 import { TimeInput } from "@/components/time-input";
 import { Copy } from "lucide-react";
@@ -123,6 +123,15 @@ export function HorariosForm({ horariosSemanais, onChange }: Props) {
     }
     onChange(horarios as unknown as HorariosSemanais);
   }, [onChange]);
+
+  // Emitir os ranges sanitizados no mount para garantir que o parent
+  // tenha os slots limpos (caso o DB tenha dados corrompidos)
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    emitChange(ranges);
+  }, [emitChange, ranges]);
 
   function updateDay(key: DayKey, partial: Partial<DayRange>) {
     setRanges(prev => {
