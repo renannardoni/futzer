@@ -377,12 +377,16 @@ function CourtEditPanel({
     finally { setUploading(false); }
   }
 
+  const [saveError, setSaveError] = useState("");
   async function handleSave() {
     setSaving(true);
+    setSaveError("");
     try {
       await updateCourt(arenaId, court.id, { nome, tipoPiso, cobertura, imagemCapa: imagemCapa || undefined, horariosSemanais: horarios });
       onSave({ ...court, nome, tipoPiso, cobertura, imagemCapa: imagemCapa || undefined, horariosSemanais: horarios });
       onClose();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Erro ao salvar");
     } finally { setSaving(false); }
   }
 
@@ -449,6 +453,10 @@ function CourtEditPanel({
           <HorariosForm horariosSemanais={horarios} onChange={setHorarios} />
         </div>
       </div>
+
+      {saveError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{saveError}</p>
+      )}
 
       <div className="flex gap-2 pt-1">
         <button onClick={handleSave} disabled={saving}

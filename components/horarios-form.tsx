@@ -13,8 +13,10 @@ function toMinutes(hhmm: string): number {
 }
 
 function fromMinutes(total: number): string {
-  const h = Math.floor(total / 60);
-  const m = total % 60;
+  // Clampear entre 00:00 e 23:45
+  const clamped = Math.max(0, Math.min(total, 23 * 60 + 45));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
@@ -61,7 +63,14 @@ const DEFAULT_RANGE: DayRange = {
 function detectRangesFromSlots(slots: string[]): DayRange {
   if (!slots || slots.length === 0) return { ...DEFAULT_RANGE, ativo: false };
 
-  const sorted = [...slots].sort();
+  // Filtrar slots inválidos (fora do range 00:00-23:45)
+  const valid = slots.filter(s => {
+    const t = toMinutes(s);
+    return t >= 0 && t <= 23 * 60 + 45;
+  });
+  if (valid.length === 0) return { ...DEFAULT_RANGE, ativo: false };
+
+  const sorted = [...valid].sort();
   const manhaSlots = sorted.filter(s => toMinutes(s) < 12 * 60);
   const tardeSlots = sorted.filter(s => toMinutes(s) >= 12 * 60);
 
