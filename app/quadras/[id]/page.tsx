@@ -78,21 +78,22 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
     return `${m1} ${y1} / ${m2} ${y2}`;
   })();
 
-  // Pre-compute occupied slots
+  // Pre-compute occupied slots — sempre em 15 min (granularidade real do banco)
   const occupiedSet = new Set<string>();
   dayReservas.forEach(r => {
-    slotsOcupados(r.hora_inicio, r.duracao ?? 60, step).forEach(s => occupiedSet.add(s));
+    slotsOcupados(r.hora_inicio, r.duracao ?? 60, 15).forEach(s => occupiedSet.add(s));
   });
 
   // Check if selecting a slot with current duration would conflict
+  // Sempre checa em 15 min para detectar conflitos com reservas em qualquer horario
   function wouldConflict(slot: string) {
     const [sh, sm] = slot.split(":").map(Number);
     const startMin = sh * 60 + sm;
-    const slotsNeeded = Math.floor(selectedDuracao / step);
+    const slotsNeeded = Math.floor(selectedDuracao / 15);
     for (let i = 0; i < slotsNeeded; i++) {
-      const t = startMin + i * step;
+      const t = startMin + i * 15;
       const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
-      if (occupiedSet.has(s) || !availableSlots.includes(s)) return true;
+      if (occupiedSet.has(s) || !rawSlots.includes(s)) return true;
     }
     return false;
   }
@@ -104,12 +105,12 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
   if (selectedSlot) {
     const [sh, sm] = selectedSlot.split(":").map(Number);
     const startMin = sh * 60 + sm;
-    const slotsNeeded = Math.floor(selectedDuracao / step);
+    const slotsNeeded = Math.floor(selectedDuracao / 15);
     for (let i = 0; i < slotsNeeded; i++) {
-      const t = startMin + i * step;
+      const t = startMin + i * 15;
       const s = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
       selectedBlockSlots.add(s);
-      if (occupiedSet.has(s) || (i > 0 && !availableSlots.includes(s))) {
+      if (occupiedSet.has(s) || (i > 0 && !rawSlots.includes(s))) {
         selectedConflictSlots.add(s);
         selectedConflict = true;
       }
