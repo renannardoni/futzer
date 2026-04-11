@@ -1260,21 +1260,7 @@ function AgendaTabs({
 
                             const dk = getDayKey(date);
                             const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
-                            // Owner calendar: slot está disponível se cai dentro do range do dia
-                            // (entre o primeiro e último slot da quadra naquele dia)
-                            const slotMin = (() => {
-                              const [h, m] = slot.split(":").map(Number);
-                              return h * 60 + m;
-                            })();
-                            const isUnavailable = courtSlots.length === 0 || (() => {
-                              const mins = courtSlots.map(s => {
-                                const [h, m] = s.split(":").map(Number);
-                                return h * 60 + m;
-                              });
-                              const minStart = Math.min(...mins);
-                              const maxEnd = Math.max(...mins) + 60; // último slot cobre ~1h
-                              return slotMin < minStart || slotMin >= maxEnd;
-                            })();
+                            const isUnavailable = !courtSlots.includes(slot);
 
                             // Check if a booking starts at this 30-min row
                             const booking = bookingAtStart.get(cellKey);
