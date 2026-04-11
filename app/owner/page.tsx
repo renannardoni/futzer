@@ -355,10 +355,10 @@ function ArenaSettingsPanel({
 // ── Court edit panel (inline, below tabs) ────────────────────────────────────
 
 function CourtEditPanel({
-  court, arenaId, step = 15,
+  court, arenaId,
   onSave, onDelete, onClose,
 }: {
-  court: SubQuadra; arenaId: string; step?: number;
+  court: SubQuadra; arenaId: string;
   onSave: (c: SubQuadra) => void; onDelete: () => void; onClose: () => void;
 }) {
   const [nome, setNome] = useState(court.nome);
@@ -446,7 +446,7 @@ function CourtEditPanel({
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-2">Horários disponíveis</label>
         <div className="bg-white rounded-lg p-3 border border-gray-200">
-          <HorariosForm horariosSemanais={horarios} step={step} onChange={setHorarios} />
+          <HorariosForm horariosSemanais={horarios} onChange={setHorarios} />
         </div>
       </div>
 
@@ -2138,7 +2138,7 @@ function Dashboard({ user }: { user: User }) {
                 const c = courts.find(c => c.id === editingCourtId);
                 return c ? (
                   <CourtEditPanel
-                    key={c.id} court={c} arenaId={selectedArena.id} step={selectedArena.discretizacaoMinima ?? 15}
+                    key={c.id} court={c} arenaId={selectedArena.id}
                     onSave={() => { refreshArena(); }}
                     onDelete={() => { refreshArena(); setSelectedCourtId(null); }}
                     onClose={() => setEditingCourtId(null)}
