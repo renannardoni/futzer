@@ -1162,22 +1162,31 @@ function AgendaTabs({
               const l = formatDateLabel(weekDates[6]);
               return `${f.num} ${f.mes} – ${l.num} ${l.mes}`;
             })();
-            // Collect slots for the selected court — in 15 min increments
-            const allSlotsSet = new Set<string>();
+            // Collect slots for the selected court to determine day range
+            const dayRangeSet = new Set<string>();
             weekDates.forEach(date => {
               const dk = getDayKey(date);
-              (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => allSlotsSet.add(s));
+              (c.horariosSemanais?.[dk]?.slots ?? []).forEach(s => dayRangeSet.add(s));
             });
-            const allSlots15 = Array.from(allSlotsSet).sort();
+            const dayRangeSorted = Array.from(dayRangeSet).sort();
 
-            // Determinar o step real entre os slots do calendário
-            const calStep = allSlots15.length >= 2
-              ? (() => {
-                  const [h1, m1] = allSlots15[0].split(":").map(Number);
-                  const [h2, m2] = allSlots15[1].split(":").map(Number);
-                  return (h2 * 60 + m2) - (h1 * 60 + m1);
-                })()
-              : step;
+            // Calendário do owner sempre usa granularidade fixa de 15 min,
+            // independente da discretização configurada (que só afeta o front público)
+            const calStep = 15;
+            const availableSlotsSet = new Set(dayRangeSorted);
+
+            // Gerar todas as rows de 15min entre o primeiro e último slot do range
+            const allSlots15: string[] = [];
+            if (dayRangeSorted.length > 0) {
+              const [h1, m1] = dayRangeSorted[0].split(":").map(Number);
+              const last = dayRangeSorted[dayRangeSorted.length - 1];
+              const [h2, m2] = last.split(":").map(Number);
+              const startMin = h1 * 60 + m1;
+              const endMin = h2 * 60 + m2;
+              for (let t = startMin; t <= endMin; t += calStep) {
+                allSlots15.push(`${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`);
+              }
+            }
 
             // Pre-compute which cells to skip (spanned by a booking above)
             const spannedCells = new Set<string>();
@@ -1243,7 +1252,21 @@ function AgendaTabs({
 
                             const dk = getDayKey(date);
                             const courtSlots = c.horariosSemanais?.[dk]?.slots ?? [];
-                            const isUnavailable = !courtSlots.includes(slot);
+                            // Owner calendar: slot está disponível se cai dentro do range do dia
+                            // (entre o primeiro e último slot da quadra naquele dia)
+                            const slotMin = (() => {
+                              const [h, m] = slot.split(":").map(Number);
+                              return h * 60 + m;
+                            })();
+                            const isUnavailable = courtSlots.length === 0 || (() => {
+                              const mins = courtSlots.map(s => {
+                                const [h, m] = s.split(":").map(Number);
+                                return h * 60 + m;
+                              });
+                              const minStart = Math.min(...mins);
+                              const maxEnd = Math.max(...mins) + 60; // último slot cobre ~1h
+                              return slotMin < minStart || slotMin >= maxEnd;
+                            })();
 
                             // Check if a booking starts at this 30-min row
                             const booking = bookingAtStart.get(cellKey);
