@@ -39,7 +39,23 @@ function AvailabilitySidebar({ quadra }: { quadra: Quadra }) {
 
   const selectedCourt = courts.find(c => c.id === selectedCourtId) ?? courts[0];
   const dayKey = getDayKey(selectedDate);
-  const availableSlots = selectedCourt?.horariosSemanais?.[dayKey]?.slots ?? [];
+  const rawSlots = selectedCourt?.horariosSemanais?.[dayKey]?.slots ?? [];
+  // Slots disponíveis para agendar (filtrados pela discretização).
+  // Backend sempre retorna 15-min; aqui filtramos para as horas de início permitidas.
+  const availableSlots = (() => {
+    if (rawSlots.length === 0) return [];
+    if (step === 15) return rawSlots;
+    const sorted = [...rawSlots].sort();
+    const firstMin = (() => {
+      const [h, m] = sorted[0].split(":").map(Number);
+      return h * 60 + m;
+    })();
+    return sorted.filter(s => {
+      const [h, m] = s.split(":").map(Number);
+      const mins = h * 60 + m;
+      return (mins - firstMin) % step === 0;
+    });
+  })();
   const reservas = quadra.reservas ?? [];
   const dayReservas = reservas.filter(r => r.data === selectedDate && r.quadra_id === selectedCourtId);
 
